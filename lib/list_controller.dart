@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'data/cloud_store.dart';
 import 'data/local_cache.dart';
-import 'domain/agents_file.dart';
+import 'domain/bot_instructions.dart';
 import 'domain/categorizer.dart';
 import 'domain/item.dart';
 import 'domain/markdown_list.dart';
@@ -20,13 +20,13 @@ class ListController extends ChangeNotifier {
     required this.cloud,
     required this.cache,
     required this.categorizer,
-    required this.agentsMarkdown,
+    required this.instructionsMarkdown,
   });
 
   final CloudStore cloud;
   final LocalCache cache;
   final Categorizer categorizer;
-  final String agentsMarkdown;
+  final String instructionsMarkdown;
 
   bool ready = false;
   bool synced = true;
@@ -220,7 +220,7 @@ class ListController extends ChangeNotifier {
     final remoteFiles = await cloud.listMarkdownFiles();
     final seen = <String>{};
     for (final file in remoteFiles) {
-      if (isAgentsFile(file.name)) continue;
+      if (isBotInstructionsFile(file.name)) continue;
       seen.add(file.id);
       final existing = cache.files[file.id];
       if (existing == null) {
@@ -238,31 +238,31 @@ class ListController extends ChangeNotifier {
     }
     cache.files.removeWhere(
       (id, file) =>
-          isAgentsFile(file.name) || (!seen.contains(id) && id != currentId),
+          isBotInstructionsFile(file.name) || (!seen.contains(id) && id != currentId),
     );
-    await _ensureAgentsFile(remoteFiles);
+    await _ensureBotInstructions(remoteFiles);
   }
 
-  Future<void> _ensureAgentsFile(List<CloudFile> remoteFiles) async {
+  Future<void> _ensureBotInstructions(List<CloudFile> remoteFiles) async {
     final existing = [
       for (final file in remoteFiles)
-        if (isAgentsFile(file.name)) file,
+        if (isBotInstructionsFile(file.name)) file,
     ];
     if (existing.isEmpty) {
-      final created = await cloud.createMarkdown('AGENTS');
+      final created = await cloud.createMarkdown('bot-instructions');
       final body = await cloud.read(created.id);
-      await cloud.write(created.id, agentsMarkdown, body.etag);
+      await cloud.write(created.id, instructionsMarkdown, body.etag);
       return;
     }
     for (final file in existing) {
       final body = await cloud.read(file.id);
-      if (body.text == agentsMarkdown) continue;
+      if (body.text == instructionsMarkdown) continue;
       try {
-        await cloud.write(file.id, agentsMarkdown, body.etag);
+        await cloud.write(file.id, instructionsMarkdown, body.etag);
       } on CloudConflict {
         final again = await cloud.read(file.id);
-        if (again.text != agentsMarkdown) {
-          await cloud.write(file.id, agentsMarkdown, again.etag);
+        if (again.text != instructionsMarkdown) {
+          await cloud.write(file.id, instructionsMarkdown, again.etag);
         }
       }
     }

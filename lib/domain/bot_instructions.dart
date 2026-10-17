@@ -1,5 +1,5 @@
-bool isAgentsFile(String filename) =>
-    filename.trim().toLowerCase() == 'agents.md';
+bool isBotInstructionsFile(String filename) =>
+    filename.trim().toLowerCase() == 'bot-instructions.md';
 
 bool isReservedListName(String raw) {
   final trimmed = raw.trim();
@@ -7,5 +7,5 @@ bool isReservedListName(String raw) {
   final filename = trimmed.toLowerCase().endsWith('.md')
       ? trimmed
       : '$trimmed.md';
-  return isAgentsFile(filename);
+  return isBotInstructionsFile(filename);
 }

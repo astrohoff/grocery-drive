@@ -2,7 +2,7 @@
 
 This folder is a shared grocery list. Each shopping list is one Markdown file. The filename is the list name, for example `Groceries.md`.
 
-This file, `AGENTS.md`, is instructions. It is not a shopping list. Do not rename it, delete it, or put items in it. The app restores this file if it changes. A list cannot be named AGENTS.
+This file, `bot-instructions.md`, is instructions. It is not a shopping list. Do not rename it, delete it, or put items in it. The app restores this file if it changes. A list cannot be named bot-instructions.
 
 ## How to edit a list
 

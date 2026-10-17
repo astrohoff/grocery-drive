@@ -1,8 +1,8 @@
 # List file format
 
-Each list is one `.md` file in the Groceries folder. The filename is the list name. The name AGENTS is reserved.
+Each list is one `.md` file in the Groceries folder. The filename is the list name. The name bot-instructions is reserved.
 
-The folder also contains `AGENTS.md`. That file is instructions for a bot, not a shopping list. The app writes it and restores it on sync. Do not rename it, delete it, or put items in it.
+The folder also contains `bot-instructions.md`. That file is instructions for a bot, not a shopping list. The app writes it and restores it on sync. Do not rename it, delete it, or put items in it.
 
 The body of a list is only lines of `- [ ] item` or `- [x] item`.
 
