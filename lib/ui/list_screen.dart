@@ -6,9 +6,10 @@ import '../domain/quantity.dart';
 import '../list_controller.dart';
 
 class ListScreen extends StatelessWidget {
-  const ListScreen({required this.controller, super.key});
+  const ListScreen({required this.controller, this.onSettings, super.key});
 
   final ListController controller;
+  final VoidCallback? onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +30,17 @@ class ListScreen extends StatelessWidget {
               ),
             ),
             actions: [
+              if (onSettings != null)
+                Semantics(
+                  container: true,
+                  explicitChildNodes: true,
+                  label: 'open-settings',
+                  button: true,
+                  child: IconButton(
+                    onPressed: onSettings,
+                    icon: const Icon(Icons.settings),
+                  ),
+                ),
               Semantics(
                 container: true,
                 explicitChildNodes: true,

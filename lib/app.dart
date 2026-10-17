@@ -13,11 +13,13 @@ class GroceryApp extends StatelessWidget {
   const GroceryApp({
     required this.cloud,
     required this.cacheDirectory,
+    this.onSettings,
     super.key,
   });
 
   final CloudStore cloud;
   final Directory cacheDirectory;
+  final VoidCallback? onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -27,16 +29,25 @@ class GroceryApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1F7A4D)),
         useMaterial3: true,
       ),
-      home: _ListHome(cloud: cloud, cacheDirectory: cacheDirectory),
+      home: _ListHome(
+        cloud: cloud,
+        cacheDirectory: cacheDirectory,
+        onSettings: onSettings,
+      ),
     );
   }
 }
 
 class _ListHome extends StatefulWidget {
-  const _ListHome({required this.cloud, required this.cacheDirectory});
+  const _ListHome({
+    required this.cloud,
+    required this.cacheDirectory,
+    this.onSettings,
+  });
 
   final CloudStore cloud;
   final Directory cacheDirectory;
+  final VoidCallback? onSettings;
 
   @override
   State<_ListHome> createState() => _ListHomeState();
@@ -97,27 +108,6 @@ class _ListHomeState extends State<_ListHome> {
     if (controller == null) {
       return const Scaffold(body: Center(child: Text('Loading')));
     }
-    return ListScreen(controller: controller);
-  }
-}
-
-class LiveCloudPlaceholder extends StatelessWidget {
-  const LiveCloudPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text(
-              'Google Drive and OneDrive are not connected yet. '
-              'Run with --dart-define=CLOUD=fake to use a local fake cloud.',
-            ),
-          ),
-        ),
-      ),
-    );
+    return ListScreen(controller: controller, onSettings: widget.onSettings);
   }
 }

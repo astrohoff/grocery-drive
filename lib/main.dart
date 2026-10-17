@@ -5,12 +5,13 @@ import 'package:path_provider/path_provider.dart';
 
 import 'app.dart';
 import 'data/fake_cloud_store.dart';
+import 'live_app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   const cloudName = String.fromEnvironment('CLOUD', defaultValue: 'live');
   if (cloudName != 'fake') {
-    runApp(const LiveCloudPlaceholder());
+    runApp(const LiveApp());
     return;
   }
   final support = await _cacheDirectory();
