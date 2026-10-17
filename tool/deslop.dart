@@ -14,7 +14,7 @@ import 'dart:io';
 ///   that contains expect( whose catch is empty or also contains expect(
 /// - no-app-import: a test file that does not import package:grocery_drive/
 /// - mirrored-call: an expect( whose actual and expected arguments call the
-///   same function
+///   same function. UpperCamelCase names are value constructors, not oracles.
 ///
 /// greaterThanOrEqualTo is not a weak matcher. The phrase-count floor uses it.
 void main() {
@@ -390,7 +390,9 @@ Set<String> _callNames(String code) {
   final names = <String>{};
   for (final match in RegExp(r'\b([A-Za-z_][A-Za-z0-9_]*)\s*\(').allMatches(code)) {
     final name = match.group(1)!;
-    if (!ignored.contains(name)) names.add(name);
+    final first = name.codeUnitAt(0);
+    final constructor = first >= 65 && first <= 90;
+    if (!ignored.contains(name) && !constructor) names.add(name);
   }
   return names;
 }

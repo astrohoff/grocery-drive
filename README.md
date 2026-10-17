@@ -1,6 +1,12 @@
 # Grocery Drive
 
-This is the start of a Flutter grocery-list app for Android and Windows. The grocery list is not built yet. `flutter run` still opens the Flutter starter counter. That counter is not the grocery list.
+This is the start of a Flutter grocery-list app for Android and Windows. Parsing a checklist, merging two edits, and matching an item to a store aisle exist as a library. The grocery list screen is not built yet. `flutter run` still opens the Flutter starter counter.
+
+## Library tests
+
+```powershell
+flutter test
+```
 
 ## Check
 
