@@ -1,6 +1,7 @@
 # Miscellaneous
 *.class
 *.lock
+!pubspec.lock
 *.log
 *.pyc
 *.swp
@@ -106,6 +107,17 @@ unlinked_spec.ds
 
 # Coverage
 coverage/
+
+# Credentials and tokens. Never commit these.
+/secrets/
+**/*client_secret*.json
+**/*oauth*.json
+**/*credentials*.json
+**/*token*.json
+
+# Local IDE files
+.idea/
+*.iml
 
 # Symbols
 app.*.symbols
