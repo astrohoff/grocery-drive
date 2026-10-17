@@ -12,6 +12,8 @@ Merge keeps an add from either side. An item stays checked if either side checke
 
 `tool/check.ps1` is the gate. Run it before a phase commit. It prints `OK` when the lint and the Windows tests pass. While editing tests, run `dart run tool/deslop.dart`. The rules are in that file. The lint does not decide whether a check is valuable.
 
+The cold-start check launches `integration_test/cold_start_test.dart` twice against one temp directory. The first process adds milk. The second process must show Groceries and milk without adding it. `GROCERY_CACHE_DIR` is a dart-define because the Windows runner does not pass environment variables into the app. Widget tests keep an in-memory fake cloud.
+
 Before committing tests you added or changed, follow `.grok/skills/review-tests/SKILL.md`. A sloppy test that lands gets copied by the next agent.
 
 Write a test from the behavior you intend, with a literal expected value, before writing the implementation that should satisfy it.

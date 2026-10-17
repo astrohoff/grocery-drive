@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -11,6 +13,17 @@ Future<void> main() async {
     runApp(const LiveCloudPlaceholder());
     return;
   }
-  final support = await getApplicationSupportDirectory();
-  runApp(GroceryApp(cloud: FakeCloudStore(), cacheDirectory: support));
+  final support = await _cacheDirectory();
+  runApp(
+    GroceryApp(
+      cloud: FakeCloudStore(directory: support),
+      cacheDirectory: support,
+    ),
+  );
+}
+
+Future<Directory> _cacheDirectory() async {
+  const override = String.fromEnvironment('GROCERY_CACHE_DIR');
+  if (override.isNotEmpty) return Directory(override);
+  return getApplicationSupportDirectory();
 }

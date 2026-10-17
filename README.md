@@ -12,6 +12,8 @@ flutter run -d windows --dart-define=CLOUD=fake
 
 The window opens on a list named Groceries, with the keyboard down and the add field visible. Type an item and press Enter. The Qty field is optional: `2`, `2 gal`, or `1/2 lb` is stored after the name as `milk (2 gal)`. The same name with a different quantity is a separate row. Check an item to strike it through. Checked items stay until you press Clear. Tap the title to create, rename, open, or delete a list.
 
+Quit the app and start it again with the same command. The window opens on the same list, including the items you added.
+
 A bot can change the open list by editing that Markdown file. The grocery folder also contains `bot-instructions.md`, which the app writes and restores, with examples of the quantity format. A list cannot be named bot-instructions. The format is in `docs/bot_format.md`. Press the sync button to pull those edits.
 
 If you run without `--dart-define=CLOUD=fake`, the app says the real clouds are not connected.
@@ -24,4 +26,4 @@ From the repo root:
 powershell -ExecutionPolicy Bypass -File .\tool\check.ps1
 ```
 
-The script runs the test lint and the widget tests. It prints `OK` when they pass.
+The script runs the test lint, the widget tests, and a Windows restart test. It prints `OK` when they pass.

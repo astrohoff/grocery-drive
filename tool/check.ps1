@@ -14,7 +14,29 @@ if ($tests.Count -eq 0) {
 }
 
 if (Test-Path (Join-Path $root 'integration_test')) {
-    flutter test integration_test -d windows --dart-define=CLOUD=fake
+    # Two processes share one directory. The second launch must show milk
+    # without adding it. The Windows runner does not pass environment variables
+    # into the app, so the directory is a dart-define.
+    $cold = Join-Path $env:TEMP 'grocery_drive_cold'
+    if (Test-Path $cold) {
+        Remove-Item -Recurse -Force $cold
+    }
+    New-Item -ItemType Directory -Path $cold | Out-Null
+    $coldDefine = $cold.Replace('\', '/')
+    $coldTest = @(
+        'test',
+        'integration_test/cold_start_test.dart',
+        '-d', 'windows',
+        '--dart-define=CLOUD=fake',
+        "--dart-define=GROCERY_CACHE_DIR=$coldDefine"
+    )
+    flutter @coldTest
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    if (-not (Test-Path (Join-Path $cold 'phase.txt'))) {
+        Write-Output 'cold start: first process did not save milk'
+        exit 1
+    }
+    flutter @coldTest
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
