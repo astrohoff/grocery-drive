@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../domain/aisle.dart';
 import '../domain/item.dart';
+import '../domain/quantity.dart';
 import '../list_controller.dart';
 
 class ListScreen extends StatelessWidget {
@@ -97,11 +98,7 @@ class ListScreen extends StatelessWidget {
   Future<void> _edit(BuildContext context, String name) async {
     final next = await showDialog<String>(
       context: context,
-      builder: (context) => _NameDialog(
-        title: 'Edit item',
-        initial: name,
-        fieldLabel: 'edit-item-field',
-      ),
+      builder: (context) => _ItemDialog(line: name),
     );
     if (next != null) controller.renameItem(name, next);
   }
@@ -255,19 +252,22 @@ class _AddField extends StatefulWidget {
 }
 
 class _AddFieldState extends State<_AddField> {
-  final _controller = TextEditingController();
+  final _name = TextEditingController();
+  final _quantity = TextEditingController();
   final _focus = FocusNode();
 
   @override
   void dispose() {
-    _controller.dispose();
+    _name.dispose();
+    _quantity.dispose();
     _focus.dispose();
     super.dispose();
   }
 
   void _submit() {
-    widget.controller.addItem(_controller.text);
-    _controller.clear();
+    widget.controller.addItem(composeItemLine(_name.text, _quantity.text));
+    _name.clear();
+    _quantity.clear();
   }
 
   @override
@@ -281,11 +281,27 @@ class _AddFieldState extends State<_AddField> {
             label: 'add-item-field',
             textField: true,
             child: TextField(
-              controller: _controller,
+              controller: _name,
               focusNode: _focus,
               autofocus: false,
               textInputAction: TextInputAction.done,
               decoration: const InputDecoration(hintText: 'Add an item'),
+              onSubmitted: (_) => _submit(),
+            ),
+          ),
+        ),
+        SizedBox(
+          width: 112,
+          child: Semantics(
+            container: true,
+            explicitChildNodes: true,
+            label: 'add-quantity-field',
+            textField: true,
+            child: TextField(
+              controller: _quantity,
+              autofocus: false,
+              textInputAction: TextInputAction.done,
+              decoration: const InputDecoration(hintText: 'Qty'),
               onSubmitted: (_) => _submit(),
             ),
           ),
@@ -321,6 +337,12 @@ class _ItemRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final muted = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
+    final name = itemName(item.name);
+    final quantity = quantityLabel(item.name);
+    final style = TextStyle(
+      decoration: item.checked ? TextDecoration.lineThrough : TextDecoration.none,
+      color: item.checked ? muted : null,
+    );
     return Row(
       children: [
         Semantics(
@@ -337,17 +359,14 @@ class _ItemRow extends StatelessWidget {
             container: true,
             explicitChildNodes: true,
             label: 'item:${item.name}',
-            child: Text(
-              item.name,
-              style: TextStyle(
-                decoration: item.checked
-                    ? TextDecoration.lineThrough
-                    : TextDecoration.none,
-                color: item.checked ? muted : null,
-              ),
-            ),
+            child: Text(name, style: style),
           ),
         ),
+        if (quantity.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Text(quantity, style: style),
+          ),
         Semantics(
           container: true,
           explicitChildNodes: true,
@@ -368,6 +387,80 @@ class _ItemRow extends StatelessWidget {
             icon: const Icon(Icons.delete),
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _ItemDialog extends StatefulWidget {
+  const _ItemDialog({required this.line});
+
+  final String line;
+
+  @override
+  State<_ItemDialog> createState() => _ItemDialogState();
+}
+
+class _ItemDialogState extends State<_ItemDialog> {
+  late final TextEditingController _name = TextEditingController(
+    text: itemName(widget.line),
+  );
+  late final TextEditingController _quantity = TextEditingController(
+    text: quantityLabel(widget.line),
+  );
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _quantity.dispose();
+    super.dispose();
+  }
+
+  void _submit() => Navigator.pop(
+    context,
+    composeItemLine(_name.text, _quantity.text),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit item'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Semantics(
+            container: true,
+            explicitChildNodes: true,
+            label: 'edit-item-field',
+            textField: true,
+            child: TextField(
+              controller: _name,
+              autofocus: true,
+              textInputAction: TextInputAction.done,
+              decoration: const InputDecoration(hintText: 'Item'),
+              onSubmitted: (_) => _submit(),
+            ),
+          ),
+          Semantics(
+            container: true,
+            explicitChildNodes: true,
+            label: 'edit-quantity-field',
+            textField: true,
+            child: TextField(
+              controller: _quantity,
+              textInputAction: TextInputAction.done,
+              decoration: const InputDecoration(hintText: 'Qty'),
+              onSubmitted: (_) => _submit(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(onPressed: _submit, child: const Text('Save')),
       ],
     );
   }

@@ -10,7 +10,7 @@ The app currently runs against an in-memory fake cloud. Google Drive and OneDriv
 flutter run -d windows --dart-define=CLOUD=fake
 ```
 
-The window opens on a list named Groceries, with the keyboard down and the add field visible. Type an item and press Enter. Check an item to strike it through. Checked items stay until you press Clear. Tap the title to create, rename, open, or delete a list.
+The window opens on a list named Groceries, with the keyboard down and the add field visible. Type an item and press Enter. The Qty field is optional: `2`, `2 gal`, or `1/2 lb` is stored after the name as `milk (2 gal)`. The same name with a different quantity is a separate row. Check an item to strike it through. Checked items stay until you press Clear. Tap the title to create, rename, open, or delete a list.
 
 A bot can change the open list by editing that Markdown file. The format is in `docs/bot_format.md`. Press the sync button to pull those edits.
 

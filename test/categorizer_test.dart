@@ -47,6 +47,15 @@ void main() {
     expect(phrases.length, greaterThanOrEqualTo(400));
   });
 
+  test('a parenthetical quantity does not change the aisle', () {
+    expect(categorizer.nameFor('milk (2 gal)'), 'Dairy');
+    expect(categorizer.nameFor('frozen peas (1 bag)'), 'Frozen');
+    expect(categorizer.nameFor('bananas (3)'), 'Produce');
+    expect(categorizer.nameFor('paper towels (6 rolls)'), 'Household');
+    expect(categorizer.nameFor('corn (2 frozen peas)'), 'Produce');
+    expect(categorizer.nameFor('2% milk (1 gal)'), 'Dairy');
+  });
+
   test('the same input returns the same known aisle id', () {
     expect(categorizer.idFor('milk'), 'dairy');
     expect(categorizer.idFor('milk'), 'dairy');

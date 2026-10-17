@@ -192,6 +192,51 @@ void main() {
     expect(find.bySemanticsLabel('item:bananas'), findsOneWidget);
   });
 
+  testWidgets('a quantity is stored after the name and keeps the aisle', (
+    tester,
+  ) async {
+    await launch(tester);
+    await tester.enterText(find.bySemanticsLabel('add-item-field'), 'milk');
+    await tester.enterText(find.bySemanticsLabel('add-quantity-field'), '2 gal');
+    await tester.tap(find.bySemanticsLabel('submit-add'));
+    await settle(tester);
+    expect(find.bySemanticsLabel('aisle:Dairy'), findsOneWidget);
+    expect(find.bySemanticsLabel('item:milk (2 gal)'), findsOneWidget);
+    expect(find.text('2 gal'), findsOneWidget);
+    final file = (await cloud.listMarkdownFiles()).single;
+    final body = await cloud.read(file.id);
+    expect(body.text, contains('- [ ] milk (2 gal)'));
+  });
+
+  testWidgets('the same name with and without a quantity are two rows', (
+    tester,
+  ) async {
+    await launch(tester);
+    await addItem(tester, 'milk');
+    await tester.enterText(find.bySemanticsLabel('add-item-field'), 'milk');
+    await tester.enterText(find.bySemanticsLabel('add-quantity-field'), '2');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await settle(tester);
+    expect(find.bySemanticsLabel('item:milk'), findsOneWidget);
+    expect(find.bySemanticsLabel('item:milk (2)'), findsOneWidget);
+  });
+
+  testWidgets('editing the quantity rewrites that line', (tester) async {
+    await launch(tester);
+    await tester.enterText(find.bySemanticsLabel('add-item-field'), 'milk');
+    await tester.enterText(find.bySemanticsLabel('add-quantity-field'), '2');
+    await tester.tap(find.bySemanticsLabel('submit-add'));
+    await settle(tester);
+    await tester.tap(find.bySemanticsLabel('edit:milk (2)'));
+    await settle(tester);
+    await tester.enterText(find.bySemanticsLabel('edit-quantity-field'), '3 gal');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await settle(tester);
+    expect(find.bySemanticsLabel('item:milk (3 gal)'), findsOneWidget);
+    expect(find.bySemanticsLabel('item:milk (2)'), findsNothing);
+    expect(find.text('3 gal'), findsOneWidget);
+  });
+
   testWidgets('a local check and a bot add both survive sync', (tester) async {
     await launch(tester);
     await addItem(tester, 'milk');

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'aisle.dart';
+import 'quantity.dart';
 
 class Categorizer {
   Categorizer._(this.aisles, this._phrases);
@@ -28,7 +29,7 @@ class Categorizer {
   }
 
   String idFor(String item) {
-    final tokens = _tokens(item);
+    final tokens = _tokens(itemName(item));
     final full = _best(tokens, 0, _phrases);
     final dropped = tokens.isNotEmpty && _quantity.hasMatch(tokens.first)
         ? _best(tokens.sublist(1), 1, _phrases)
