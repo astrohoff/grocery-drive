@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grocery_drive/app.dart';
+import 'package:grocery_drive/data/cloud_store.dart';
 import 'package:grocery_drive/data/fake_cloud_store.dart';
 
 void main() {
@@ -42,6 +43,11 @@ void main() {
     );
   }
 
+  Future<CloudFile> groceriesFile() async {
+    final files = await cloud.listMarkdownFiles();
+    return files.singleWhere((file) => file.name == 'Groceries.md');
+  }
+
   Future<void> addItem(WidgetTester tester, String name) async {
     await tester.enterText(find.bySemanticsLabel('add-item-field'), name);
     await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -52,7 +58,10 @@ void main() {
     await launch(tester);
     expect(find.text('Groceries'), findsWidgets);
     final files = await cloud.listMarkdownFiles();
-    expect(files.map((file) => file.name).toList(), ['Groceries.md']);
+    expect(files.map((file) => file.name).toList(), [
+      'AGENTS.md',
+      'Groceries.md',
+    ]);
   });
 
   testWidgets('the add field is visible and does not request focus', (tester) async {
@@ -176,20 +185,75 @@ void main() {
     await tester.tap(find.bySemanticsLabel('sync-now'));
     await settle(tester);
     expect(find.bySemanticsLabel('item:milk'), findsOneWidget);
-    final file = (await cloud.listMarkdownFiles()).single;
+    final file = await groceriesFile();
     final body = await cloud.read(file.id);
     expect(body.text, contains('- [ ] milk'));
   });
 
   testWidgets('a bot append shows up under Produce after sync', (tester) async {
     await launch(tester);
-    final file = (await cloud.listMarkdownFiles()).single;
+    final file = await groceriesFile();
     final current = await cloud.read(file.id);
     await cloud.write(file.id, '${current.text}- [ ] bananas\n', current.etag);
     await tester.tap(find.bySemanticsLabel('sync-now'));
     await settle(tester);
     expect(find.bySemanticsLabel('aisle:Produce'), findsOneWidget);
     expect(find.bySemanticsLabel('item:bananas'), findsOneWidget);
+  });
+
+  testWidgets('the folder has bot instructions and AGENTS is not a list', (
+    tester,
+  ) async {
+    await launch(tester);
+    final agents = (await cloud.listMarkdownFiles()).singleWhere(
+      (file) => file.name == 'AGENTS.md',
+    );
+    final instructions = await cloud.read(agents.id);
+    expect(instructions.text, contains('- [ ] milk (2 gal)'));
+    expect(instructions.text, contains('- [ ] eggs (3)'));
+    expect(instructions.text, contains('- [ ] butter (1/2 lb)'));
+    expect(instructions.text, contains('milk` and `milk (2)` are different'));
+
+    await tester.tap(find.bySemanticsLabel('list-switcher'));
+    await settle(tester);
+    expect(find.bySemanticsLabel('open-list:Groceries'), findsOneWidget);
+    expect(find.bySemanticsLabel('open-list:AGENTS'), findsNothing);
+    await tester.enterText(find.bySemanticsLabel('create-list-field'), 'AGENTS');
+    await tester.tap(find.bySemanticsLabel('create-list'));
+    await settle(tester);
+    expect(find.text('Groceries'), findsWidgets);
+    expect(find.text('AGENTS'), findsNothing);
+
+    await tester.tap(find.bySemanticsLabel('list-switcher'));
+    await settle(tester);
+    await tester.enterText(find.bySemanticsLabel('create-list-field'), 'Party');
+    await tester.tap(find.bySemanticsLabel('create-list'));
+    await settle(tester);
+    await tester.tap(find.bySemanticsLabel('list-switcher'));
+    await settle(tester);
+    await tester.tap(find.bySemanticsLabel('rename-list:Party'));
+    await settle(tester);
+    await tester.enterText(find.bySemanticsLabel('rename-list-field'), 'agents');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await settle(tester);
+    expect(find.text('Party'), findsWidgets);
+    final names = (await cloud.listMarkdownFiles()).map((file) => file.name);
+    expect(names.where((name) => name.toLowerCase() == 'agents.md').length, 1);
+    expect(names, contains('Party.md'));
+  });
+
+  testWidgets('a rewritten AGENTS.md is restored on sync', (tester) async {
+    await launch(tester);
+    final agents = (await cloud.listMarkdownFiles()).singleWhere(
+      (file) => file.name == 'AGENTS.md',
+    );
+    await cloud.write(agents.id, '# nope\n', (await cloud.read(agents.id)).etag);
+    await tester.tap(find.bySemanticsLabel('sync-now'));
+    await settle(tester);
+    final restored = await cloud.read(agents.id);
+    expect(restored.text, contains('- [ ] milk (2 gal)'));
+    expect(restored.text, contains('- [ ] butter (1/2 lb)'));
+    expect(restored.text, isNot(contains('# nope')));
   });
 
   testWidgets('a quantity is stored after the name and keeps the aisle', (
@@ -203,7 +267,7 @@ void main() {
     expect(find.bySemanticsLabel('aisle:Dairy'), findsOneWidget);
     expect(find.bySemanticsLabel('item:milk (2 gal)'), findsOneWidget);
     expect(find.text('2 gal'), findsOneWidget);
-    final file = (await cloud.listMarkdownFiles()).single;
+    final file = await groceriesFile();
     final body = await cloud.read(file.id);
     expect(body.text, contains('- [ ] milk (2 gal)'));
   });
@@ -242,7 +306,7 @@ void main() {
     await addItem(tester, 'milk');
     await tester.tap(find.bySemanticsLabel('check:milk'));
     await settle(tester);
-    final file = (await cloud.listMarkdownFiles()).single;
+    final file = await groceriesFile();
     final current = await cloud.read(file.id);
     await cloud.write(file.id, '${current.text}- [ ] bananas\n', current.etag);
     await tester.tap(find.bySemanticsLabel('sync-now'));

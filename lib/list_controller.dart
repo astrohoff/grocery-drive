@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'data/cloud_store.dart';
 import 'data/local_cache.dart';
+import 'domain/agents_file.dart';
 import 'domain/categorizer.dart';
 import 'domain/item.dart';
 import 'domain/markdown_list.dart';
@@ -19,11 +20,13 @@ class ListController extends ChangeNotifier {
     required this.cloud,
     required this.cache,
     required this.categorizer,
+    required this.agentsMarkdown,
   });
 
   final CloudStore cloud;
   final LocalCache cache;
   final Categorizer categorizer;
+  final String agentsMarkdown;
 
   bool ready = false;
   bool synced = true;
@@ -119,7 +122,7 @@ class ListController extends ChangeNotifier {
 
   Future<void> createList(String raw) async {
     final name = raw.trim();
-    if (name.isEmpty || name.contains('\n')) return;
+    if (name.isEmpty || name.contains('\n') || isReservedListName(name)) return;
     try {
       final created = await cloud.createMarkdown(name);
       final body = await cloud.read(created.id);
@@ -143,7 +146,12 @@ class ListController extends ChangeNotifier {
   Future<void> renameList(String id, String raw) async {
     final name = raw.trim();
     final file = cache.files[id];
-    if (file == null || name.isEmpty || name.contains('\n')) return;
+    if (file == null ||
+        name.isEmpty ||
+        name.contains('\n') ||
+        isReservedListName(name)) {
+      return;
+    }
     try {
       await cloud.rename(id, name);
       file.name = name.toLowerCase().endsWith('.md') ? name : '$name.md';
@@ -212,6 +220,7 @@ class ListController extends ChangeNotifier {
     final remoteFiles = await cloud.listMarkdownFiles();
     final seen = <String>{};
     for (final file in remoteFiles) {
+      if (isAgentsFile(file.name)) continue;
       seen.add(file.id);
       final existing = cache.files[file.id];
       if (existing == null) {
@@ -227,7 +236,36 @@ class ListController extends ChangeNotifier {
         existing.name = file.name;
       }
     }
-    cache.files.removeWhere((id, _) => !seen.contains(id) && id != currentId);
+    cache.files.removeWhere(
+      (id, file) =>
+          isAgentsFile(file.name) || (!seen.contains(id) && id != currentId),
+    );
+    await _ensureAgentsFile(remoteFiles);
+  }
+
+  Future<void> _ensureAgentsFile(List<CloudFile> remoteFiles) async {
+    final existing = [
+      for (final file in remoteFiles)
+        if (isAgentsFile(file.name)) file,
+    ];
+    if (existing.isEmpty) {
+      final created = await cloud.createMarkdown('AGENTS');
+      final body = await cloud.read(created.id);
+      await cloud.write(created.id, agentsMarkdown, body.etag);
+      return;
+    }
+    for (final file in existing) {
+      final body = await cloud.read(file.id);
+      if (body.text == agentsMarkdown) continue;
+      try {
+        await cloud.write(file.id, agentsMarkdown, body.etag);
+      } on CloudConflict {
+        final again = await cloud.read(file.id);
+        if (again.text != agentsMarkdown) {
+          await cloud.write(file.id, agentsMarkdown, again.etag);
+        }
+      }
+    }
   }
 
   Future<void> _applyRemote(

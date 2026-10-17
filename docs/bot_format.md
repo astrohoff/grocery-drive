@@ -1,8 +1,10 @@
 # List file format
 
-Each list is one `.md` file in the Groceries folder. The filename is the list name.
+Each list is one `.md` file in the Groceries folder. The filename is the list name. The name AGENTS is reserved.
 
-The body is only lines of `- [ ] item` or `- [x] item`.
+The folder also contains `AGENTS.md`. That file is instructions for a bot, not a shopping list. The app writes it and restores it on sync. Do not rename it, delete it, or put items in it.
+
+The body of a list is only lines of `- [ ] item` or `- [x] item`.
 
 A quantity, with or without a unit, goes in parentheses after the name: `- [ ] milk (2 gal)`, `- [ ] eggs (3)`, `- [ ] butter (1/2 lb)`. The name is everything before that parenthesis. `milk` and `milk (2)` are different lines. A parenthesis that does not start with a number, such as `milk (organic)`, is part of the name.
 

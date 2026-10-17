@@ -4,6 +4,8 @@ Grocery Drive is a Flutter app for Android and Windows. One active cloud folder 
 
 The license stays MIT. The aisle dictionary is original work in this repo. Automated tests run on Windows only.
 
+The grocery folder contains `AGENTS.md`. The app copies it from `assets/folder_agents.md` and restores it on sync. It is not a list. The list name AGENTS is reserved.
+
 Merge keeps an add from either side. An item stays checked if either side checked it. A delete sticks when the other side did not change that item. A union that puts a deleted item back is wrong.
 
 ## Checks

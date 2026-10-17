@@ -60,10 +60,15 @@ class _ListHomeState extends State<_ListHome> {
         'assets/aisles.json',
         cache: false,
       );
+      final agents = await rootBundle.loadString(
+        'assets/folder_agents.md',
+        cache: false,
+      );
       final controller = ListController(
         cloud: widget.cloud,
         cache: LocalCache(widget.cacheDirectory),
         categorizer: Categorizer.fromJsonString(source),
+        agentsMarkdown: agents,
       );
       await controller.open();
       if (!mounted) {
