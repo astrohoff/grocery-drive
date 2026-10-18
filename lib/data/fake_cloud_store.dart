@@ -12,22 +12,63 @@ class FakeCloudStore implements CloudStore {
   var online = true;
   var _nextId = 1;
   var _nextEtag = 1;
+  String? _activeFolderId;
+  final _folders = <String, _FakeFolder>{};
   final _files = <String, _FakeFile>{};
 
   @override
-  Future<void> ensureRootFolder() async {
+  Future<String> ensureRootFolder() async {
     _guard();
-    final exists = _files.values.any((file) => file.name == 'Groceries.md');
-    if (!exists) {
-      await createMarkdown('Groceries');
+    final selected = _activeFolderId;
+    if (selected != null) return selected;
+    final folder = await createRootFolder('Groceries');
+    _activeFolderId = folder.id;
+    _save();
+    return folder.id;
+  }
+
+  @override
+  Future<List<CloudFolder>> listRootFolders() async {
+    _guard();
+    final folders = [
+      for (final folder in _folders.values)
+        CloudFolder(id: folder.id, name: folder.name),
+    ]..sort((a, b) => a.name.compareTo(b.name));
+    return folders;
+  }
+
+  @override
+  Future<CloudFolder> createRootFolder(String name) async {
+    _guard();
+    final trimmed = name.trim();
+    for (final folder in _folders.values) {
+      if (folder.name == trimmed) {
+        return CloudFolder(id: folder.id, name: folder.name);
+      }
     }
+    final folder = _FakeFolder(id: 'folder-${_nextId++}', name: trimmed);
+    _folders[folder.id] = folder;
+    _save();
+    return CloudFolder(id: folder.id, name: folder.name);
+  }
+
+  @override
+  Future<void> useFolder(String id) async {
+    _guard();
+    if (!_folders.containsKey(id)) throw CloudException('missing folder');
+    _activeFolderId = id;
   }
 
   @override
   Future<List<CloudFile>> listMarkdownFiles() async {
-    _guard();
-    final files = _files.values.map((file) => file.toCloud()).toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
+    await ensureRootFolder();
+    final folderId = _activeFolderId;
+    final files =
+        _files.values
+            .where((file) => file.folderId == folderId)
+            .map((file) => file.toCloud())
+            .toList()
+          ..sort((a, b) => a.name.compareTo(b.name));
     return files;
   }
 
@@ -54,9 +95,14 @@ class FakeCloudStore implements CloudStore {
 
   @override
   Future<CloudFile> createMarkdown(String name) async {
-    _guard();
+    await ensureRootFolder();
+    final folderId = _activeFolderId;
+    if (folderId == null) {
+      throw CloudException('missing folder');
+    }
     final file = _FakeFile(
       id: 'file-${_nextId++}',
+      folderId: folderId,
       name: _filename(name),
       text: '',
       etag: '${_nextEtag++}',
@@ -96,10 +142,35 @@ class FakeCloudStore implements CloudStore {
     final json = jsonDecode(file.readAsStringSync()) as Map;
     _nextId = json['nextId'] as int? ?? 1;
     _nextEtag = json['nextEtag'] as int? ?? 1;
+    _folders.clear();
+    for (final raw in json['folders'] as List? ?? const []) {
+      final saved = _FakeFolder.fromJson(raw as Map);
+      _folders[saved.id] = saved;
+    }
     _files.clear();
     for (final raw in json['files'] as List? ?? const []) {
       final saved = _FakeFile.fromJson(raw as Map);
       _files[saved.id] = saved;
+    }
+    _attachOrphans();
+  }
+
+  void _attachOrphans() {
+    final orphans = [
+      for (final file in _files.values)
+        if (file.folderId.isEmpty || !_folders.containsKey(file.folderId)) file,
+    ];
+    if (orphans.isEmpty) return;
+    final home = _folders.values.where((folder) => folder.name == 'Groceries');
+    final String homeId;
+    if (home.isEmpty) {
+      homeId = 'folder-${_nextId++}';
+      _folders[homeId] = _FakeFolder(id: homeId, name: 'Groceries');
+    } else {
+      homeId = home.first.id;
+    }
+    for (final file in orphans) {
+      file.folderId = homeId;
     }
   }
 
@@ -111,6 +182,7 @@ class FakeCloudStore implements CloudStore {
     final json = {
       'nextId': _nextId,
       'nextEtag': _nextEtag,
+      'folders': [for (final folder in _folders.values) folder.toJson()],
       'files': [for (final saved in _files.values) saved.toJson()],
     };
     file.writeAsStringSync(jsonEncode(json));
@@ -123,9 +195,22 @@ class FakeCloudStore implements CloudStore {
   }
 }
 
+class _FakeFolder {
+  _FakeFolder({required this.id, required this.name});
+
+  final String id;
+  final String name;
+
+  Map<String, String> toJson() => {'id': id, 'name': name};
+
+  static _FakeFolder fromJson(Map json) =>
+      _FakeFolder(id: json['id'] as String, name: json['name'] as String);
+}
+
 class _FakeFile {
   _FakeFile({
     required this.id,
+    required this.folderId,
     required this.name,
     required this.text,
     required this.etag,
@@ -133,6 +218,7 @@ class _FakeFile {
   });
 
   final String id;
+  String folderId;
   String name;
   String text;
   String etag;
@@ -142,6 +228,7 @@ class _FakeFile {
 
   Map<String, Object> toJson() => {
     'id': id,
+    'folderId': folderId,
     'name': name,
     'text': text,
     'etag': etag,
@@ -150,6 +237,7 @@ class _FakeFile {
 
   static _FakeFile fromJson(Map json) => _FakeFile(
     id: json['id'] as String,
+    folderId: json['folderId'] as String? ?? '',
     name: json['name'] as String,
     text: json['text'] as String? ?? '',
     etag: json['etag'] as String,

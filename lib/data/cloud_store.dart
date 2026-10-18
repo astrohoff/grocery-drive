@@ -1,3 +1,10 @@
+class CloudFolder {
+  const CloudFolder({required this.id, required this.name});
+
+  final String id;
+  final String name;
+}
+
 class CloudFile {
   const CloudFile({
     required this.id,
@@ -43,5 +50,14 @@ abstract class CloudStore {
 
   Future<void> delete(String fileId);
 
-  Future<void> ensureRootFolder();
+  /// Uses the selected folder, or finds or creates a root folder named Groceries.
+  /// Returns the folder id the following list and create calls will use.
+  Future<String> ensureRootFolder();
+
+  Future<List<CloudFolder>> listRootFolders();
+
+  /// Returns the existing root folder when [name] is already there.
+  Future<CloudFolder> createRootFolder(String name);
+
+  Future<void> useFolder(String id);
 }

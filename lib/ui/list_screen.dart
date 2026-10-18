@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../domain/aisle.dart';
 import '../domain/item.dart';
@@ -65,42 +66,50 @@ class ListScreen extends StatelessWidget {
               ),
             ],
           ),
-          body: Column(
-            children: [
-              if (!controller.synced)
-                Semantics(
-                  container: true,
-                  explicitChildNodes: true,
-                  label: 'sync-banner',
-                  child: ListTile(title: Text('Not synced')),
-                ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-                child: _AddField(controller: controller),
+          body: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: Column(
+                children: [
+                  if (!controller.synced)
+                    Semantics(
+                      container: true,
+                      explicitChildNodes: true,
+                      label: 'sync-banner',
+                      child: const ListTile(title: Text('Not synced')),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+                    child: _AddField(controller: controller),
+                  ),
+                  Expanded(
+                    child: CustomScrollView(
+                      slivers: [
+                        for (final group in groups) ...[
+                          SliverPersistentHeader(
+                            pinned: true,
+                            delegate: _AisleHeaderDelegate(group.aisle.name),
+                          ),
+                          SliverList(
+                            delegate: SliverChildListDelegate([
+                              for (final item in group.items)
+                                _ItemRow(
+                                  item: item,
+                                  onToggle: () => controller.toggle(item.name),
+                                  onEdit: () => _edit(context, item.name),
+                                  onDelete: () =>
+                                      controller.deleteItem(item.name),
+                                ),
+                            ]),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              Expanded(
-                child: ListView(
-                  children: [
-                    for (final group in groups) ...[
-                      Semantics(
-                        container: true,
-                        explicitChildNodes: true,
-                        label: 'aisle:${group.aisle.name}',
-                        header: true,
-                        child: ListTile(title: Text(group.aisle.name)),
-                      ),
-                      for (final item in group.items)
-                        _ItemRow(
-                          item: item,
-                          onToggle: () => controller.toggle(item.name),
-                          onEdit: () => _edit(context, item.name),
-                          onDelete: () => controller.deleteItem(item.name),
-                        ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
         );
       },
@@ -284,51 +293,56 @@ class _AddFieldState extends State<_AddField> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Semantics(
-            container: true,
-            explicitChildNodes: true,
-            label: 'add-item-field',
-            textField: true,
-            child: TextField(
-              controller: _name,
-              focusNode: _focus,
-              autofocus: false,
-              textInputAction: TextInputAction.done,
-              decoration: const InputDecoration(hintText: 'Add an item'),
-              onSubmitted: (_) => _submit(),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          _name.clear();
+          _quantity.clear();
+        },
+      },
+      child: Row(
+        children: [
+          Expanded(
+            child: Semantics(
+              container: true,
+              explicitChildNodes: true,
+              label: 'add-item-field',
+              textField: true,
+              child: TextField(
+                controller: _name,
+                focusNode: _focus,
+                autofocus: false,
+                textInputAction: TextInputAction.done,
+                decoration: const InputDecoration(hintText: 'Add an item'),
+                onSubmitted: (_) => _submit(),
+              ),
             ),
           ),
-        ),
-        SizedBox(
-          width: 112,
-          child: Semantics(
-            container: true,
-            explicitChildNodes: true,
-            label: 'add-quantity-field',
-            textField: true,
-            child: TextField(
-              controller: _quantity,
-              autofocus: false,
-              textInputAction: TextInputAction.done,
-              decoration: const InputDecoration(hintText: 'Qty'),
-              onSubmitted: (_) => _submit(),
+          SizedBox(
+            width: 112,
+            child: Semantics(
+              container: true,
+              explicitChildNodes: true,
+              label: 'add-quantity-field',
+              textField: true,
+              child: TextField(
+                controller: _quantity,
+                autofocus: false,
+                textInputAction: TextInputAction.done,
+                decoration: const InputDecoration(hintText: 'Qty'),
+                onSubmitted: (_) => _submit(),
+              ),
             ),
           ),
-        ),
-        Semantics(
-          container: true,
-          explicitChildNodes: true,
-          label: 'submit-add',
-          button: true,
-          child: IconButton(
-            onPressed: _submit,
-            icon: const Icon(Icons.add),
+          Semantics(
+            container: true,
+            explicitChildNodes: true,
+            label: 'submit-add',
+            button: true,
+            child: IconButton(onPressed: _submit, icon: const Icon(Icons.add)),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -348,11 +362,14 @@ class _ItemRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final muted = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
+    final muted = Theme.of(context).colorScheme.onSurface
+        .withValues(alpha: 0.5);
     final name = itemName(item.name);
     final quantity = quantityLabel(item.name);
     final style = TextStyle(
-      decoration: item.checked ? TextDecoration.lineThrough : TextDecoration.none,
+      decoration: item.checked
+          ? TextDecoration.lineThrough
+          : TextDecoration.none,
       color: item.checked ? muted : null,
     );
     return Row(
@@ -371,7 +388,13 @@ class _ItemRow extends StatelessWidget {
             container: true,
             explicitChildNodes: true,
             label: 'item:${item.name}',
-            child: Text(name, style: style),
+            child: SizedBox(
+              height: 56,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(name, style: style),
+              ),
+            ),
           ),
         ),
         if (quantity.isNotEmpty)
@@ -379,28 +402,119 @@ class _ItemRow extends StatelessWidget {
             padding: const EdgeInsets.only(right: 8),
             child: Text(quantity, style: style),
           ),
-        Semantics(
-          container: true,
-          explicitChildNodes: true,
-          label: 'edit:${item.name}',
-          button: true,
-          child: IconButton(
-            onPressed: onEdit,
-            icon: const Icon(Icons.edit),
+        _ItemMenu(name: item.name, onEdit: onEdit, onDelete: onDelete),
+      ],
+    );
+  }
+}
+
+class _ItemMenu extends StatelessWidget {
+  const _ItemMenu({
+    required this.name,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final String name;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      explicitChildNodes: true,
+      label: 'item-menu:$name',
+      button: true,
+      child: IconButton(
+        onPressed: () => _open(context),
+        icon: const Icon(Icons.more_vert),
+      ),
+    );
+  }
+
+  Future<void> _open(BuildContext context) async {
+    final box = context.findRenderObject();
+    final overlay = Overlay.of(context).context.findRenderObject();
+    if (box is! RenderBox || overlay is! RenderBox || !box.hasSize) return;
+    final origin = box.localToGlobal(Offset.zero, ancestor: overlay);
+    final selected = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        origin & box.size,
+        Offset.zero & overlay.size,
+      ),
+      items: [
+        PopupMenuItem(
+          value: 'edit',
+          child: Semantics(
+            container: true,
+            explicitChildNodes: true,
+            label: 'edit:$name',
+            button: true,
+            child: const Text('Edit'),
           ),
         ),
-        Semantics(
-          container: true,
-          explicitChildNodes: true,
-          label: 'delete:${item.name}',
-          button: true,
-          child: IconButton(
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete),
+        PopupMenuItem(
+          value: 'delete',
+          child: Semantics(
+            container: true,
+            explicitChildNodes: true,
+            label: 'delete:$name',
+            button: true,
+            child: const Text('Delete'),
           ),
         ),
       ],
     );
+    if (!context.mounted || selected == null) return;
+    // showMenu pops its route before this runs. The next frame can open a dialog.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      if (selected == 'edit') onEdit();
+      if (selected == 'delete') onDelete();
+    });
+  }
+}
+
+class _AisleHeaderDelegate extends SliverPersistentHeaderDelegate {
+  _AisleHeaderDelegate(this.name);
+
+  final String name;
+
+  @override
+  double get minExtent => 40;
+
+  @override
+  double get maxExtent => 40;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerHigh,
+      child: Semantics(
+        container: true,
+        explicitChildNodes: true,
+        label: 'aisle:$name',
+        header: true,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(name, style: Theme.of(context).textTheme.titleSmall),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _AisleHeaderDelegate oldDelegate) {
+    return oldDelegate.name != name;
   }
 }
 
@@ -428,10 +542,8 @@ class _ItemDialogState extends State<_ItemDialog> {
     super.dispose();
   }
 
-  void _submit() => Navigator.pop(
-    context,
-    composeItemLine(_name.text, _quantity.text),
-  );
+  void _submit() =>
+      Navigator.pop(context, composeItemLine(_name.text, _quantity.text));
 
   @override
   Widget build(BuildContext context) {
@@ -523,7 +635,10 @@ class _NameDialogState extends State<_NameDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
         TextButton(onPressed: _submit, child: const Text('Save')),
       ],
     );
@@ -549,4 +664,3 @@ List<_AisleGroup> _groups(ListController controller) {
         _AisleGroup(aisle, buckets[aisle.id]!),
   ];
 }
-

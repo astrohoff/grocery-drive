@@ -20,7 +20,6 @@ class _LiveAppState extends State<LiveApp> {
   Directory? _cache;
   CloudStore? _store;
   var _ready = false;
-  var _settings = false;
 
   @override
   void initState() {
@@ -37,41 +36,49 @@ class _LiveAppState extends State<LiveApp> {
     setState(() {
       _cache = cache;
       _store = store;
-      _settings = store == null;
       _ready = true;
     });
+  }
+
+  Future<void> _reloadAccount() async {
+    final next = await _accounts.openStore();
+    if (!mounted) return;
+    setState(() => _store = next);
   }
 
   @override
   Widget build(BuildContext context) {
     if (!_ready || _cache == null) {
-      return const MaterialApp(
-        home: Scaffold(body: Center(child: Text('Loading'))),
+      return MaterialApp(
+        title: 'Grocery Drive',
+        theme: groceryLightTheme(),
+        darkTheme: groceryDarkTheme(),
+        themeMode: ThemeMode.system,
+        home: const Scaffold(body: Center(child: Text('Loading'))),
       );
     }
     final store = _store;
-    if (_settings || store == null) {
+    if (store == null) {
       return MaterialApp(
+        title: 'Grocery Drive',
+        theme: groceryLightTheme(),
+        darkTheme: groceryDarkTheme(),
+        themeMode: ThemeMode.system,
         home: SettingsScreen(
           accounts: _accounts,
-          onSignedIn: () async {
-            final next = await _accounts.openStore();
-            if (!mounted) return;
-            setState(() {
-              _store = next;
-              _settings = next == null;
-            });
+          providerName: null,
+          onSignedIn: () {
+            _reloadAccount();
           },
-          onClose: store == null
-              ? null
-              : () => setState(() => _settings = false),
         ),
       );
     }
     return GroceryApp(
+      key: ObjectKey(store),
       cloud: store,
       cacheDirectory: _cache!,
-      onSettings: () => setState(() => _settings = true),
+      accounts: _accounts,
+      onAccountChanged: _reloadAccount,
     );
   }
 }

@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'cloud_store.dart';
 import 'google_drive_store.dart';
+import 'google_scope.dart';
 import 'loopback_oauth.dart';
 import 'onedrive_store.dart';
 import 'refresh_token.dart';
@@ -62,6 +63,9 @@ class CloudAccounts {
     } on FlutterAppAuthUserCancelledException {
       throw SignInCancelled();
     }
+    if (name == 'google') {
+      requireGoogleDriveScope(session.scopes, android: Platform.isAndroid);
+    }
     if (session.refreshToken.isEmpty) {
       throw CloudException('$name did not return a refresh token');
     }
@@ -86,6 +90,7 @@ class CloudAccounts {
       accessToken: result.accessToken ?? '',
       refreshToken: result.refreshToken ?? '',
       expiresAt: result.accessTokenExpirationDateTime,
+      scopes: result.scopes,
     );
   }
 
@@ -111,6 +116,7 @@ class CloudAccounts {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       expiresAt: tokens.expiresAt,
+      scopes: tokens.scopes,
     );
   }
 
@@ -252,9 +258,11 @@ class _Session {
     required this.accessToken,
     required this.refreshToken,
     this.expiresAt,
+    this.scopes,
   });
 
   final String accessToken;
   final String refreshToken;
   final DateTime? expiresAt;
+  final List<String>? scopes;
 }

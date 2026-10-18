@@ -7,6 +7,7 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 
 import 'cloud_store.dart';
+import 'google_scope.dart';
 
 class SignInCancelled implements Exception {}
 
@@ -14,11 +15,13 @@ class LoopbackTokens {
   const LoopbackTokens({
     required this.accessToken,
     required this.refreshToken,
+    required this.scopes,
     this.expiresAt,
   });
 
   final String accessToken;
   final String refreshToken;
+  final List<String> scopes;
   final DateTime? expiresAt;
 }
 
@@ -161,6 +164,7 @@ Future<LoopbackTokens> _exchange({
   return LoopbackTokens(
     accessToken: access,
     refreshToken: refresh,
+    scopes: scopesFromToken(decoded['scope']),
     expiresAt: expiresAt,
   );
 }

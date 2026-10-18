@@ -2,7 +2,9 @@
 
 Grocery Drive is a Flutter grocery list for Android and Windows. Items are grouped into store aisles on screen. Each list is one Markdown file of checkbox lines, so a bot can edit the same list. Aisles are not written into the file.
 
-The lists live in one folder named Groceries on Google Drive or OneDrive. The app creates that folder the first time you sign in. Sign-in is in Settings. Google and Microsoft credentials are required. The setup steps are in `docs/oauth_setup.md`.
+Open the app and type an item. Press Enter to add it. Check an item to strike it through. Checked items stay until you press Clear. Tap the title to switch, create, rename, or delete a list. The add field sits under the title. Escape clears it.
+
+Settings is where you sign in to Google Drive or OneDrive, choose a folder, and sync. Use the Groceries folder, which the app creates, or pick another folder in the drive root. The app syncs that folder only. Google and Microsoft credentials are required. The setup steps are in `docs/oauth_setup.md`.
 
 ## Run
 
@@ -23,7 +25,7 @@ A local fake cloud needs no account:
 flutter run -d windows --dart-define=CLOUD=fake
 ```
 
-The window opens on the list you used last, or on Groceries the first time, with the keyboard down and the add field visible. Type an item and press Enter. The Qty field is optional: `2`, `2 gal`, or `1/2 lb` is stored after the name as `milk (2 gal)`. The same name with a different quantity is a separate row. Check an item to strike it through. Checked items stay until you press Clear. Tap the title to create, rename, open, or delete a list.
+The window opens on the list you used last, or on Groceries the first time, with the keyboard down and the add field visible. The Qty field is optional: `2`, `2 gal`, or `1/2 lb` is stored after the name as `milk (2 gal)`. The same name with a different quantity is a separate row.
 
 Quit the app and start it again with the same command. The window opens on the same list, including the items you added.
 

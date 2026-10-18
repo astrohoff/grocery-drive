@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grocery_drive/app.dart';
 import 'package:grocery_drive/data/cloud_store.dart';
@@ -25,9 +26,7 @@ void main() {
   }
 
   Future<void> launch(WidgetTester tester) async {
-    await tester.pumpWidget(
-      GroceryApp(cloud: cloud, cacheDirectory: cacheDir),
-    );
+    await tester.pumpWidget(GroceryApp(cloud: cloud, cacheDirectory: cacheDir));
     for (var i = 0; i < 20; i++) {
       await tester.pump(const Duration(milliseconds: 50));
       if (find.text('Loading').evaluate().isEmpty) return;
@@ -54,7 +53,21 @@ void main() {
     await settle(tester);
   }
 
-  testWidgets('first launch creates Groceries and shows that title', (tester) async {
+  Future<void> tapItemAction(
+    WidgetTester tester,
+    String line,
+    String action,
+  ) async {
+    await tester.tap(find.bySemanticsLabel('item-menu:$line'));
+    await settle(tester);
+    await tester.tap(find.bySemanticsLabel('$action:$line'));
+    await tester.pump();
+    await settle(tester);
+  }
+
+  testWidgets('first launch creates Groceries and shows that title', (
+    tester,
+  ) async {
     await launch(tester);
     expect(find.text('Groceries'), findsWidgets);
     final files = await cloud.listMarkdownFiles();
@@ -64,7 +77,9 @@ void main() {
     ]);
   });
 
-  testWidgets('the add field is visible and does not request focus', (tester) async {
+  testWidgets('the add field is visible and does not request focus', (
+    tester,
+  ) async {
     await launch(tester);
     expect(find.bySemanticsLabel('add-item-field'), findsOneWidget);
     expect(tester.testTextInput.isVisible, isFalse);
@@ -86,29 +101,35 @@ void main() {
     await tester.tap(find.bySemanticsLabel('check:milk'));
     await settle(tester);
     expect(find.bySemanticsLabel('aisle:Dairy'), findsOneWidget);
-    expect(itemText(tester, 'milk').style?.decoration, TextDecoration.lineThrough);
+    expect(
+      itemText(tester, 'milk').style?.decoration,
+      TextDecoration.lineThrough,
+    );
   });
 
-  testWidgets('clear completed removes checked lines and leaves unchecked lines', (
-    tester,
-  ) async {
-    await launch(tester);
-    await addItem(tester, 'milk');
-    await addItem(tester, 'eggs');
-    await tester.tap(find.bySemanticsLabel('check:milk'));
-    await settle(tester);
-    await tester.tap(find.bySemanticsLabel('clear-completed'));
-    await settle(tester);
-    expect(find.bySemanticsLabel('item:milk'), findsNothing);
-    expect(find.bySemanticsLabel('item:eggs'), findsOneWidget);
-  });
+  testWidgets(
+    'clear completed removes checked lines and leaves unchecked lines',
+    (tester) async {
+      await launch(tester);
+      await addItem(tester, 'milk');
+      await addItem(tester, 'eggs');
+      await tester.tap(find.bySemanticsLabel('check:milk'));
+      await settle(tester);
+      await tester.tap(find.bySemanticsLabel('clear-completed'));
+      await settle(tester);
+      expect(find.bySemanticsLabel('item:milk'), findsNothing);
+      expect(find.bySemanticsLabel('item:eggs'), findsOneWidget);
+    },
+  );
 
   testWidgets('editing an item renames that line', (tester) async {
     await launch(tester);
     await addItem(tester, 'milk');
-    await tester.tap(find.bySemanticsLabel('edit:milk'));
-    await settle(tester);
-    await tester.enterText(find.bySemanticsLabel('edit-item-field'), 'oat milk');
+    await tapItemAction(tester, 'milk', 'edit');
+    await tester.enterText(
+      find.bySemanticsLabel('edit-item-field'),
+      'oat milk',
+    );
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await settle(tester);
     expect(find.bySemanticsLabel('item:oat milk'), findsOneWidget);
@@ -118,8 +139,7 @@ void main() {
   testWidgets('deleting an item removes that line', (tester) async {
     await launch(tester);
     await addItem(tester, 'milk');
-    await tester.tap(find.bySemanticsLabel('delete:milk'));
-    await settle(tester);
+    await tapItemAction(tester, 'milk', 'delete');
     expect(find.bySemanticsLabel('item:milk'), findsNothing);
   });
 
@@ -136,7 +156,10 @@ void main() {
     await settle(tester);
     await tester.tap(find.bySemanticsLabel('rename-list:Party'));
     await settle(tester);
-    await tester.enterText(find.bySemanticsLabel('rename-list-field'), 'Weekend');
+    await tester.enterText(
+      find.bySemanticsLabel('rename-list-field'),
+      'Weekend',
+    );
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await settle(tester);
     expect(find.text('Weekend'), findsWidgets);
@@ -229,7 +252,10 @@ void main() {
 
       await tester.tap(find.bySemanticsLabel('list-switcher'));
       await settle(tester);
-      await tester.enterText(find.bySemanticsLabel('create-list-field'), 'Party');
+      await tester.enterText(
+        find.bySemanticsLabel('create-list-field'),
+        'Party',
+      );
       await tester.tap(find.bySemanticsLabel('create-list'));
       await settle(tester);
       await tester.tap(find.bySemanticsLabel('list-switcher'));
@@ -245,7 +271,9 @@ void main() {
       expect(find.text('Party'), findsWidgets);
       final names = (await cloud.listMarkdownFiles()).map((file) => file.name);
       expect(
-        names.where((name) => name.toLowerCase() == 'bot-instructions.md').length,
+        names
+            .where((name) => name.toLowerCase() == 'bot-instructions.md')
+            .length,
         1,
       );
       expect(names, contains('Party.md'));
@@ -277,7 +305,10 @@ void main() {
   ) async {
     await launch(tester);
     await tester.enterText(find.bySemanticsLabel('add-item-field'), 'milk');
-    await tester.enterText(find.bySemanticsLabel('add-quantity-field'), '2 gal');
+    await tester.enterText(
+      find.bySemanticsLabel('add-quantity-field'),
+      '2 gal',
+    );
     await tester.tap(find.bySemanticsLabel('submit-add'));
     await settle(tester);
     expect(find.bySemanticsLabel('aisle:Dairy'), findsOneWidget);
@@ -307,9 +338,11 @@ void main() {
     await tester.enterText(find.bySemanticsLabel('add-quantity-field'), '2');
     await tester.tap(find.bySemanticsLabel('submit-add'));
     await settle(tester);
-    await tester.tap(find.bySemanticsLabel('edit:milk (2)'));
-    await settle(tester);
-    await tester.enterText(find.bySemanticsLabel('edit-quantity-field'), '3 gal');
+    await tapItemAction(tester, 'milk (2)', 'edit');
+    await tester.enterText(
+      find.bySemanticsLabel('edit-quantity-field'),
+      '3 gal',
+    );
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await settle(tester);
     expect(find.bySemanticsLabel('item:milk (3 gal)'), findsOneWidget);
@@ -327,7 +360,107 @@ void main() {
     await cloud.write(file.id, '${current.text}- [ ] bananas\n', current.etag);
     await tester.tap(find.bySemanticsLabel('sync-now'));
     await settle(tester);
-    expect(itemText(tester, 'milk').style?.decoration, TextDecoration.lineThrough);
+    expect(
+      itemText(tester, 'milk').style?.decoration,
+      TextDecoration.lineThrough,
+    );
     expect(find.bySemanticsLabel('item:bananas'), findsOneWidget);
   });
+
+  testWidgets('escape clears the add field and does not add the item', (
+    tester,
+  ) async {
+    await launch(tester);
+    await tester.enterText(find.bySemanticsLabel('add-item-field'), 'kale');
+    await tester.enterText(find.bySemanticsLabel('add-quantity-field'), '2');
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(_fieldText(tester, 'add-item-field'), '');
+    expect(_fieldText(tester, 'add-quantity-field'), '');
+    expect(find.bySemanticsLabel('item:kale'), findsNothing);
+    expect(find.bySemanticsLabel('item:kale (2)'), findsNothing);
+  });
+
+  testWidgets('a row is at least 56 pixels tall', (tester) async {
+    await launch(tester);
+    await addItem(tester, 'milk');
+    expect(
+      tester.getSize(find.bySemanticsLabel('item:milk')).height,
+      greaterThanOrEqualTo(56),
+    );
+  });
+
+  testWidgets('the list stays within 720 pixels on a wide window', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1000, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await launch(tester);
+    final row = find
+        .ancestor(
+          of: find.bySemanticsLabel('add-item-field'),
+          matching: find.byType(Row),
+        )
+        .first;
+    expect(tester.getSize(row).width, lessThanOrEqualTo(720));
+  });
+
+  testWidgets('light mode uses the warm page background', (tester) async {
+    await launch(tester);
+    final context = tester.element(find.bySemanticsLabel('add-item-field'));
+    expect(Theme.of(context).scaffoldBackgroundColor, const Color(0xFFF6F3EC));
+  });
+
+  testWidgets('dark mode uses the scheme surface', (tester) async {
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    await launch(tester);
+    final context = tester.element(find.bySemanticsLabel('add-item-field'));
+    expect(
+      Theme.of(context).scaffoldBackgroundColor,
+      ColorScheme.fromSeed(
+        seedColor: const Color(0xFF1F7A4D),
+        brightness: Brightness.dark,
+      ).surface,
+    );
+  });
+
+  testWidgets('the aisle header stays pinned while its items scroll', (
+    tester,
+  ) async {
+    await launch(tester);
+    for (var i = 0; i < 12; i++) {
+      await addItem(tester, 'milk $i');
+    }
+    final listRect = tester.getRect(find.byType(CustomScrollView));
+    await tester.dragFrom(
+      Offset(listRect.center.dx, listRect.bottom - 24),
+      const Offset(0, -200),
+    );
+    await settle(tester);
+    final position = tester
+        .state<ScrollableState>(
+          find.descendant(
+            of: find.byType(CustomScrollView),
+            matching: find.byType(Scrollable),
+          ),
+        )
+        .position;
+    expect(position.pixels, greaterThanOrEqualTo(80));
+    final headerTop = tester
+        .getTopLeft(find.bySemanticsLabel('aisle:Dairy'))
+        .dy;
+    final listTop = tester.getTopLeft(find.byType(CustomScrollView)).dy;
+    expect(headerTop, listTop);
+  });
+}
+
+String _fieldText(WidgetTester tester, String label) {
+  final field = tester.widget<TextField>(
+    find.descendant(
+      of: find.bySemanticsLabel(label),
+      matching: find.byType(TextField),
+    ),
+  );
+  return field.controller?.text ?? '';
 }

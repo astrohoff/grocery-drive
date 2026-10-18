@@ -42,6 +42,9 @@ class ListController extends ChangeNotifier {
   Future<void> open() async {
     await cache.load();
     try {
+      if (cache.folderId != null) {
+        await cloud.useFolder(cache.folderId!);
+      }
       await _refreshFromCloud();
       synced = true;
     } on CloudException {
@@ -53,13 +56,42 @@ class ListController extends ChangeNotifier {
     if (synced && currentId != null) await sync();
   }
 
+  Future<void> selectFolder(String id) async {
+    final previous = _current;
+    if (previous != null && previous.localText != previous.baseText) {
+      await _push(previous);
+      if (!synced) return;
+    }
+    try {
+      await cloud.useFolder(id);
+    } on CloudException {
+      synced = false;
+      notifyListeners();
+      return;
+    }
+    cache.folderId = id;
+    cache.files.clear();
+    cache.lastOpenedId = null;
+    currentId = null;
+    try {
+      await _refreshFromCloud();
+      synced = true;
+    } on CloudException {
+      synced = false;
+    }
+    _show(cache.lastOpenedId ?? _fallbackId());
+    await cache.save();
+    notifyListeners();
+  }
+
   Future<void> sync() async {
     final current = _current;
     if (current == null) return;
     try {
       await _refreshFromCloud();
       final remote = await cloud.read(current.id);
-      if (remote.etag != current.etag || current.localText != current.baseText) {
+      if (remote.etag != current.etag ||
+          current.localText != current.baseText) {
         await _applyRemote(current, remote);
       }
       synced = true;
@@ -116,7 +148,10 @@ class ListController extends ChangeNotifier {
   }
 
   void clearCompleted() {
-    items = [for (final item in items) if (!item.checked) item];
+    items = [
+      for (final item in items)
+        if (!item.checked) item,
+    ];
     _commit();
   }
 
@@ -216,8 +251,13 @@ class ListController extends ChangeNotifier {
   }
 
   Future<void> _refreshFromCloud() async {
-    await cloud.ensureRootFolder();
-    final remoteFiles = await cloud.listMarkdownFiles();
+    final folderId = await cloud.ensureRootFolder();
+    cache.folderId = folderId;
+    var remoteFiles = await cloud.listMarkdownFiles();
+    if (!remoteFiles.any((file) => file.name == 'Groceries.md')) {
+      await cloud.createMarkdown('Groceries');
+      remoteFiles = await cloud.listMarkdownFiles();
+    }
     final seen = <String>{};
     for (final file in remoteFiles) {
       if (isBotInstructionsFile(file.name)) continue;
@@ -238,7 +278,8 @@ class ListController extends ChangeNotifier {
     }
     cache.files.removeWhere(
       (id, file) =>
-          isBotInstructionsFile(file.name) || (!seen.contains(id) && id != currentId),
+          isBotInstructionsFile(file.name) ||
+          (!seen.contains(id) && id != currentId),
     );
     await _ensureBotInstructions(remoteFiles);
   }

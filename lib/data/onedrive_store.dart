@@ -15,36 +15,56 @@ class OneDriveStore implements CloudStore {
   static const _root = 'https://graph.microsoft.com/v1.0';
 
   @override
-  Future<void> ensureRootFolder() async {
-    if (_folderId != null) return;
-    final existing = await _findChild(
-      '$_root/me/drive/root/children',
-      'Groceries',
-    );
-    if (existing != null) {
-      _folderId = existing;
-      return;
+  Future<String> ensureRootFolder() async {
+    final selected = _folderId;
+    if (selected != null) return selected;
+    final folder = await createRootFolder('Groceries');
+    _folderId = folder.id;
+    return folder.id;
+  }
+
+  @override
+  Future<List<CloudFolder>> listRootFolders() async {
+    final folders = <CloudFolder>[];
+    String? page = '$_root/me/drive/root/children';
+    for (var i = 0; i < 20 && page != null; i++) {
+      final body = await _json('GET', page);
+      for (final raw in body['value'] as List? ?? const []) {
+        final folder = _folderFromItem(raw);
+        if (folder != null) folders.add(folder);
+      }
+      page = body['@odata.nextLink'] as String?;
     }
+    folders.sort((a, b) => a.name.compareTo(b.name));
+    return folders;
+  }
+
+  @override
+  Future<CloudFolder> createRootFolder(String name) async {
+    final existing = await _folderNamed(name);
+    if (existing != null) return existing;
     try {
       final created = await _json('POST', '$_root/me/drive/root/children', {
-        'name': 'Groceries',
+        'name': name,
         'folder': <String, Object>{},
         '@microsoft.graph.conflictBehavior': 'fail',
       });
-      final id = created['id'] as String?;
-      if (id == null) {
+      final folder = _folderFromItem(created);
+      if (folder == null) {
         throw CloudException('OneDrive did not return a folder id');
       }
-      _folderId = id;
+      return folder;
     } on CloudException catch (error) {
       if (error.message != 'OneDrive 409') rethrow;
-      final again = await _findChild(
-        '$_root/me/drive/root/children',
-        'Groceries',
-      );
+      final again = await _folderNamed(name);
       if (again == null) rethrow;
-      _folderId = again;
+      return again;
     }
+  }
+
+  @override
+  Future<void> useFolder(String id) async {
+    _folderId = id;
   }
 
   @override
@@ -141,13 +161,22 @@ class OneDriveStore implements CloudStore {
     await _send('DELETE', '$_root/me/drive/items/$fileId');
   }
 
-  Future<String?> _findChild(String url, String name) async {
-    String? page = url;
+  CloudFolder? _folderFromItem(Object? raw) {
+    if (raw is! Map) return null;
+    if (raw['folder'] == null) return null;
+    final id = raw['id'] as String?;
+    final name = raw['name'] as String?;
+    if (id == null || name == null) return null;
+    return CloudFolder(id: id, name: name);
+  }
+
+  Future<CloudFolder?> _folderNamed(String name) async {
+    String? page = '$_root/me/drive/root/children';
     for (var i = 0; i < 20 && page != null; i++) {
       final body = await _json('GET', page);
       for (final raw in body['value'] as List? ?? const []) {
-        final item = raw as Map;
-        if (item['name'] == name) return item['id'] as String?;
+        final folder = _folderFromItem(raw);
+        if (folder != null && folder.name == name) return folder;
       }
       page = body['@odata.nextLink'] as String?;
     }

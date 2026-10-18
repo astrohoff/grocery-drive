@@ -1,6 +1,6 @@
 # List file format
 
-Each list is one `.md` file in the Groceries folder. The filename is the list name. The name bot-instructions is reserved.
+Each list is one `.md` file in the active folder. The filename is the list name. The app starts with a folder named Groceries. The name bot-instructions is reserved.
 
 The folder also contains `bot-instructions.md`. That file is instructions for a bot, not a shopping list. The app writes it and restores it on sync. Do not rename it, delete it, or put items in it.
 

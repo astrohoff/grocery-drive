@@ -15,25 +15,61 @@ class GoogleDriveStore implements CloudStore {
   String? _folderId;
 
   @override
-  Future<void> ensureRootFolder() async {
-    if (_folderId != null) return;
+  Future<String> ensureRootFolder() async {
+    final selected = _folderId;
+    if (selected != null) return selected;
+    final folder = await createRootFolder('Groceries');
+    _folderId = folder.id;
+    return folder.id;
+  }
+
+  @override
+  Future<List<CloudFolder>> listRootFolders() async {
+    final folders = <CloudFolder>[];
+    String? page;
+    for (var i = 0; i < 20 && (i == 0 || page != null); i++) {
+      final listed = await _api(
+        () => _drive.files.list(
+          q: "mimeType = 'application/vnd.google-apps.folder' and 'root' in parents and trashed = false",
+          spaces: 'drive',
+          pageSize: 100,
+          pageToken: page,
+          $fields: 'nextPageToken,files(id,name)',
+        ),
+      );
+      for (final file in listed.files ?? const <drive.File>[]) {
+        final id = file.id;
+        final name = file.name;
+        if (id == null || name == null) continue;
+        folders.add(CloudFolder(id: id, name: name));
+      }
+      page = listed.nextPageToken;
+      if (page == null) break;
+    }
+    folders.sort((a, b) => a.name.compareTo(b.name));
+    return folders;
+  }
+
+  @override
+  Future<CloudFolder> createRootFolder(String name) async {
     final listed = await _api(
       () => _drive.files.list(
-        q: "mimeType = 'application/vnd.google-apps.folder' and name = 'Groceries' and trashed = false",
+        q: "mimeType = 'application/vnd.google-apps.folder' and name = '${_queryText(name)}' and trashed = false",
         spaces: 'drive',
         pageSize: 10,
         $fields: 'files(id,name)',
       ),
     );
-    final existing = listed.files ?? const [];
-    if (existing.isNotEmpty && existing.first.id != null) {
-      _folderId = existing.first.id;
-      return;
+    final existing = listed.files ?? const <drive.File>[];
+    final found = existing.isEmpty ? null : existing.first;
+    final foundId = found?.id;
+    if (foundId != null) {
+      return CloudFolder(id: foundId, name: found?.name ?? name);
     }
     final created = await _api(
       () => _drive.files.create(
         drive.File()
-          ..name = 'Groceries'
+          ..name = name
           ..mimeType = 'application/vnd.google-apps.folder',
       ),
     );
@@ -41,6 +77,11 @@ class GoogleDriveStore implements CloudStore {
     if (id == null) {
       throw CloudException('Google Drive did not return a folder id');
     }
+    return CloudFolder(id: id, name: created.name ?? name);
+  }
+
+  @override
+  Future<void> useFolder(String id) async {
     _folderId = id;
   }
 
@@ -201,6 +242,9 @@ class GoogleDriveStore implements CloudStore {
     if (trimmed.toLowerCase().endsWith('.md')) return trimmed;
     return '$trimmed.md';
   }
+
+  String _queryText(String name) =>
+      name.replaceAll(r'\', r'\\').replaceAll("'", r"\'");
 }
 
 class _BearerClient extends http.BaseClient {
