@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 
 import 'cloud_store.dart';
@@ -82,7 +83,7 @@ Future<LoopbackTokens> signInWithLoopback({
         ..statusCode = HttpStatus.ok
         ..headers.set(HttpHeaders.contentTypeHeader, 'text/html; charset=utf-8')
         ..write(
-          '<!DOCTYPE html><html><body><p>You can close this window.</p></body></html>',
+          '<!DOCTYPE html><html><body><p>You can close this window and return to Grocery Drive.</p></body></html>',
         );
       await request.response.close();
       if (error == 'access_denied') throw SignInCancelled();
@@ -92,13 +93,17 @@ Future<LoopbackTokens> signInWithLoopback({
       if (code == null || code.isEmpty || returned != state) {
         throw CloudException('Sign-in did not return an authorization code.');
       }
-      return await _exchange(
-        tokenEndpoint: tokenEndpoint,
-        clientId: clientId,
-        clientSecret: clientSecret,
-        code: code,
-        redirectUri: redirectUri,
-        verifier: verifier,
+      return await exchangeAfterForeground(
+        deferUntilResumed: Platform.isAndroid,
+        waitUntilResumed: _waitUntilResumed,
+        exchange: () => _exchange(
+          tokenEndpoint: tokenEndpoint,
+          clientId: clientId,
+          clientSecret: clientSecret,
+          code: code,
+          redirectUri: redirectUri,
+          verifier: verifier,
+        ),
       );
     }
   } on TimeoutException {
@@ -134,6 +139,51 @@ Future<void> _openBrowser(Uri url) async {
   ]);
   if (result.exitCode != 0) {
     throw CloudException('Could not open the browser.');
+  }
+}
+
+/// Android aborts a new connection while Chrome is in front. The phone
+/// showed that as "Software caused connection abort" on the token URL.
+/// Wait until Grocery Drive is in front, then post. One retry covers the
+/// moment the network comes back. Windows posts immediately.
+Future<LoopbackTokens> exchangeAfterForeground({
+  required bool deferUntilResumed,
+  required Future<void> Function() waitUntilResumed,
+  required Future<LoopbackTokens> Function() exchange,
+  Future<void> Function()? pauseBeforeRetry,
+}) async {
+  if (deferUntilResumed) await waitUntilResumed();
+  try {
+    return await exchange();
+  } on http.ClientException {
+    if (!deferUntilResumed) rethrow;
+  }
+  await (pauseBeforeRetry ?? _pauseBeforeTokenRetry)();
+  return await exchange();
+}
+
+Future<void> _pauseBeforeTokenRetry() {
+  return Future<void>.delayed(const Duration(milliseconds: 500));
+}
+
+Future<void> _waitUntilResumed() async {
+  final binding = WidgetsBinding.instance;
+  if (binding.lifecycleState == AppLifecycleState.resumed) return;
+  final completer = Completer<void>();
+  final listener = AppLifecycleListener(
+    binding: binding,
+    onStateChange: (state) {
+      if (state == AppLifecycleState.resumed && !completer.isCompleted) {
+        completer.complete();
+      }
+    },
+  );
+  try {
+    await completer.future.timeout(const Duration(minutes: 5));
+  } on TimeoutException {
+    throw CloudException('Sign-in timed out.');
+  } finally {
+    listener.dispose();
   }
 }
 

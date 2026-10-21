@@ -76,7 +76,7 @@ Install that file on a connected device. This does not rebuild, so the ids stay 
 flutter install -d device-id --use-application-binary=build\app\outputs\flutter-apk\app-release.apk
 ```
 
-Open `grocery_drive` from the phone launcher after that. Launching it does not take `--dart-define`. Sign-in stays on the phone until you uninstall the app. A phone sign-in does not update `secrets/*.json`. Rebuild the APK when a client id or the Google secret changes. The phone opens the system browser and returns through `http://localhost:8484`, the same redirect as Windows. `docs/oauth_setup.md` has the registration. A debug `flutter run` keeps the previous redirect until you run it again.
+Open `grocery_drive` from the phone launcher after that. Launching it does not take `--dart-define`. Sign-in stays on the phone until you uninstall the app. A phone sign-in does not update `secrets/*.json`. Rebuild the APK when a client id or the Google secret changes. The phone opens the system browser and returns through `http://localhost:8484`, the same redirect as Windows. Switch back to the app when the browser says you can close the window. Android finishes sign-in after that. `docs/oauth_setup.md` has the registration. A debug `flutter run` keeps the previous redirect until you run it again.
 
 ## Check
 

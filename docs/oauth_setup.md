@@ -180,7 +180,7 @@ Open **Settings** and click **Sign in with Google**. The system browser opens.
 1. Sign in as the test user you added.
 2. Google shows a testing warning because the app is unverified. Continue. On the current screen that is **Advanced**, then **Go to Grocery Drive (unsafe)**.
 3. Allow the Drive permission. Leave it checked. The consent screen is asking to see, edit, create, and delete all files in that Drive. That is the `drive` scope, and the app needs it to read a list a bot wrote.
-4. The browser says you can close the window. On the phone, switch back to Grocery Drive. Settings closes and the list opens. The app creates a folder named Groceries the first time you sign in.
+4. The browser says you can close the window and return to Grocery Drive. On the phone, switch back to the app. Android drops the token request while Chrome is in front, so the app finishes sign-in after you return. Settings closes and the list opens. The app creates a folder named Groceries the first time you sign in.
 
 Open `secrets/google.json`. `refresh_token` is now a long string. The app wrote it because the file was already there.
 
@@ -205,6 +205,7 @@ The script reads the client id and the Google secret from those JSON files. You 
 - The Settings button is missing or disabled. The client id was empty at compile time. Run `flutter run` again with that `--dart-define`.
 - Google says the app is blocked, or `access_denied`, and you are not on the test-user list. Add that Google account under **Audience** > **Test users** and stay in Testing.
 - `redirect_uri_mismatch` from Google, or Microsoft says the `redirect_uri` is not valid. The app sends `http://localhost:8484`. On Google, confirm the client type is **Desktop app**. On Microsoft, confirm that URI is on **Mobile and desktop applications**. A debug app keeps the old redirect until you `flutter run` again.
+- The phone says `Software caused connection abort` and names the token address. The browser step worked, and Android dropped the token request while Chrome was in front. Switch back to Grocery Drive when the browser says you can close the window. Update the app if it still posts that request before you return.
 - Google returns `invalid_request` and says the client secret is missing. Copy the Desktop client's secret into `GOOGLE_DESKTOP_SECRET` and into `secrets/google.json`.
 - Microsoft asks for admin approval. The account is a work or school account. Use a personal Microsoft account, or have an admin grant the three delegated permissions.
 - `Port 8484 is already in use`. Close the other sign-in window and try again.
