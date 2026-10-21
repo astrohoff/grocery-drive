@@ -8,8 +8,8 @@ List<String> scopesFromToken(Object? scope) {
   return scope.split(RegExp(r'\s+'));
 }
 
-/// Android reports null scopes when the grant matches the request.
-/// Windows always has a scope string. An empty list is a refusal.
+/// A null list is accepted only when [android] is true.
+/// Loopback sign-in always passes a list. An empty list is a refusal.
 void requireGoogleDriveScope(List<String>? scopes, {required bool android}) {
   if (android && scopes == null) return;
   final granted = scopes ?? const <String>[];

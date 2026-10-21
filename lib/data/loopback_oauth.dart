@@ -4,12 +4,18 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 import 'cloud_store.dart';
 import 'google_scope.dart';
 
 class SignInCancelled implements Exception {}
+
+/// Both providers already accept this address. The Google client is a
+/// Desktop app, which allows loopback and rejects a custom scheme.
+/// Microsoft will not register a redirect with one slash after the colon.
+const oauthRedirectUri = 'http://localhost:8484';
 
 class LoopbackTokens {
   const LoopbackTokens({
@@ -116,6 +122,12 @@ Future<HttpServer> _bind(int port) async {
 }
 
 Future<void> _openBrowser(Uri url) async {
+  if (Platform.isAndroid) {
+    final opened = await const MethodChannel('grocery_drive/browser')
+        .invokeMethod<bool>('open', {'url': url.toString()});
+    if (opened != true) throw CloudException('Could not open the browser.');
+    return;
+  }
   final result = await Process.run('rundll32', [
     'url.dll,FileProtocolHandler',
     url.toString(),

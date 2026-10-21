@@ -18,15 +18,13 @@ Google's scope is `https://www.googleapis.com/auth/drive`. The narrower `drive.f
 
 ## Redirects
 
-A redirect is the address Google or Microsoft sends the browser back to after you approve access. The app sends these exact strings. A different string, an extra slash, or a different port makes sign-in fail.
+A redirect is the address Google or Microsoft sends the browser back to after you approve access. The app sends this exact string on Windows and on Android, for both providers:
 
-Windows, both providers: `http://localhost:8484`
+`http://localhost:8484`
 
-Android, both providers: `com.astrohoff.grocerydrive:/oauthredirect`
+The app opens the system browser and listens on that port on the same device. On a phone, `localhost` is the phone, and the phone browser returns to the app there. Both platforms use authorization-code PKCE, which binds the sign-in to this app, and both store the refresh token in secure storage.
 
-The Android scheme is the part before the colon. It is already set as `appAuthRedirectScheme` in `android/app/build.gradle.kts`. Type one slash after the colon. `com.astrohoff.grocerydrive://oauthredirect` is a different address.
-
-Windows opens the system browser and listens on port 8484. Android uses `flutter_appauth`. That plugin has no Windows build. Both platforms use authorization-code PKCE, which binds the sign-in to this app, and both store the refresh token in secure storage.
+Do not register a custom scheme such as `com.astrohoff.grocerydrive:/oauthredirect`. The Google client is a Desktop app, and that client type rejects a custom scheme with `redirect_uri_mismatch`. Microsoft's portal will not save a redirect that has only one slash after the colon, so that address was never a registered redirect either. `http://localhost:8484` is the address Windows already uses.
 
 ## Google
 
@@ -82,10 +80,7 @@ If you closed the dialog, open the client in the list. The secret is on that pag
 
 Create a **Desktop app** client. A **Web application** client does not give you a client secret this app can send, and it requires an HTTPS redirect.
 
-A Desktop client has no redirect box, and it does not need one for Windows. Google accepts `http://localhost` on any port for that client type, which covers `http://localhost:8484`. If the create form or the client page does show **Authorized redirect URIs**, add both of these and save:
-
-- `http://localhost:8484`
-- `com.astrohoff.grocerydrive:/oauthredirect`
+A Desktop client has no redirect box, and it does not need one. Google accepts `http://localhost` on any port for that client type, which covers `http://localhost:8484` on Windows and on Android. If the create form or the client page does show **Authorized redirect URIs**, add `http://localhost:8484` and save. Delete `com.astrohoff.grocerydrive:/oauthredirect` if it is listed. A Desktop client does not accept it.
 
 ## Microsoft
 
@@ -113,12 +108,12 @@ Leave **Directory (tenant) ID** out of the app. The app always uses the `common`
 
 1. Open **Authentication**.
 2. If `http://localhost:8484` is not already listed, choose **Add a platform** or **Add Redirect URI**, then **Mobile and desktop applications**.
-3. In **Custom redirect URIs**, add `http://localhost:8484` if it is missing, and add `com.astrohoff.grocerydrive:/oauthredirect`.
+3. In **Custom redirect URIs**, add `http://localhost:8484` if it is missing. Do not add a custom scheme. The portal rejects `:/`.
 4. Leave the suggested URI `https://login.microsoftonline.com/common/oauth2/nativeclient` unchecked. The app does not send it.
 5. Click **Configure**, then **Save**.
 6. Under **Advanced settings** (on the **Settings** tab, if the page has tabs), set **Allow public client flows** to **Yes**. The label is sometimes **Enable the following mobile and desktop flows**. Save.
 
-Add both redirects on **Mobile and desktop applications**. A **Web** platform makes Microsoft expect a client secret, and this app does not send one.
+Keep the redirect on **Mobile and desktop applications**. A **Web** platform makes Microsoft expect a client secret, and this app does not send one.
 
 Microsoft ignores the port when it matches a `localhost` redirect, so `http://localhost` would also match. Register `http://localhost:8484` anyway, because that is the string the app sends. If the portal stores it with a trailing slash, leave the saved value. The app still sends the address without a slash.
 
@@ -174,6 +169,8 @@ flutter run -d windows `
 
 These defines are compiled in. Change a value, and run the command again. Hot reload keeps the old id.
 
+`flutter run` needs the defines on every launch because it rebuilds. `tool/build_windows.ps1` and `tool/build_android.ps1` read the client ids from the secrets files. One builds a Windows exe, and the other builds an Android APK. The README sections **Windows app** and **Android app** have the steps. The command above is still how you run a Windows debug build. Android debug is the same defines with `flutter run -d device-id`.
+
 ## Sign in, which writes the refresh token
 
 Nothing is listening on port 8484 except this sign-in. Close another Grocery Drive window before you start.
@@ -183,7 +180,7 @@ Open **Settings** and click **Sign in with Google**. The system browser opens.
 1. Sign in as the test user you added.
 2. Google shows a testing warning because the app is unverified. Continue. On the current screen that is **Advanced**, then **Go to Grocery Drive (unsafe)**.
 3. Allow the Drive permission. Leave it checked. The consent screen is asking to see, edit, create, and delete all files in that Drive. That is the `drive` scope, and the app needs it to read a list a bot wrote.
-4. The browser says you can close the window. Settings closes and the list opens. The app creates a folder named Groceries the first time you sign in.
+4. The browser says you can close the window. On the phone, switch back to Grocery Drive. Settings closes and the list opens. The app creates a folder named Groceries the first time you sign in.
 
 Open `secrets/google.json`. `refresh_token` is now a long string. The app wrote it because the file was already there.
 
@@ -207,7 +204,7 @@ The script reads the client id and the Google secret from those JSON files. You 
 
 - The Settings button is missing or disabled. The client id was empty at compile time. Run `flutter run` again with that `--dart-define`.
 - Google says the app is blocked, or `access_denied`, and you are not on the test-user list. Add that Google account under **Audience** > **Test users** and stay in Testing.
-- `redirect_uri_mismatch` from Google, or `AADSTS50011` from Microsoft. The registered redirect is not the string in the [Redirects](#redirects) section. On Google, confirm the client type is **Desktop app**. On Microsoft, confirm both URIs are on **Mobile and desktop applications**.
+- `redirect_uri_mismatch` from Google, or Microsoft says the `redirect_uri` is not valid. The app sends `http://localhost:8484`. On Google, confirm the client type is **Desktop app**. On Microsoft, confirm that URI is on **Mobile and desktop applications**. A debug app keeps the old redirect until you `flutter run` again.
 - Google returns `invalid_request` and says the client secret is missing. Copy the Desktop client's secret into `GOOGLE_DESKTOP_SECRET` and into `secrets/google.json`.
 - Microsoft asks for admin approval. The account is a work or school account. Use a personal Microsoft account, or have an admin grant the three delegated permissions.
 - `Port 8484 is already in use`. Close the other sign-in window and try again.
