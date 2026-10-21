@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:http/http.dart' as http;
 
@@ -82,6 +84,25 @@ class GoogleDriveStore implements CloudStore {
 
   @override
   Future<void> useFolder(String id) async {
+    final token = await accessToken();
+    final http.Response response;
+    try {
+      response = await _client.get(
+        _fileUri(id, 'fields=mimeType'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+    } on http.ClientException catch (error) {
+      throw CloudException(error.message);
+    }
+    if (response.statusCode == 404) throw CloudException('missing folder');
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw CloudException('Google Drive ${response.statusCode}');
+    }
+    final decoded = jsonDecode(response.body);
+    final mime = decoded is Map ? decoded['mimeType'] : null;
+    if (mime != 'application/vnd.google-apps.folder') {
+      throw CloudException('missing folder');
+    }
     _folderId = id;
   }
 
@@ -128,15 +149,17 @@ class GoogleDriveStore implements CloudStore {
         headers: {'Authorization': 'Bearer $token'},
       ),
     );
-    final header = response.headers['etag'] ?? '';
-    final etag = header.isNotEmpty ? header : await _metadataEtag(fileId);
-    return CloudText(text: response.body, etag: etag);
+    return CloudText(text: response.body, etag: await _version(fileId));
   }
 
   @override
   Future<String> write(String fileId, String text, String? ifMatchEtag) async {
+    // Drive v3 sends no ETag and ignores If-Match. Version changes on every edit.
+    if (ifMatchEtag != null && await _version(fileId) != ifMatchEtag) {
+      throw CloudConflict();
+    }
     final token = await accessToken();
-    final response = await _request(
+    await _request(
       () => _client.patch(
         Uri.parse(
           'https://www.googleapis.com/upload/drive/v3/files/${Uri.encodeComponent(fileId)}?uploadType=media',
@@ -144,14 +167,11 @@ class GoogleDriveStore implements CloudStore {
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'text/plain; charset=utf-8',
-          'If-Match': ?ifMatchEtag,
         },
         body: text,
       ),
     );
-    final header = response.headers['etag'] ?? '';
-    if (header.isNotEmpty) return header;
-    return _metadataEtag(fileId);
+    return _version(fileId);
   }
 
   @override
@@ -217,19 +237,21 @@ class GoogleDriveStore implements CloudStore {
     }
   }
 
-  Future<String> _metadataEtag(String fileId) async {
+  Future<String> _version(String fileId) async {
     final token = await accessToken();
     final response = await _request(
       () => _client.get(
-        _fileUri(fileId, 'fields=id'),
+        _fileUri(fileId, 'fields=version'),
         headers: {'Authorization': 'Bearer $token'},
       ),
     );
-    final etag = response.headers['etag'] ?? '';
-    if (etag.isEmpty) {
-      throw CloudException('Google Drive did not return an etag');
+    final decoded = jsonDecode(response.body);
+    final raw = decoded is Map ? decoded['version'] : null;
+    final version = raw is String ? raw : (raw is num ? raw.toString() : '');
+    if (version.isEmpty) {
+      throw CloudException('Google Drive did not return a version');
     }
-    return etag;
+    return version;
   }
 
   Uri _fileUri(String fileId, String query) {

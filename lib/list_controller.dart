@@ -42,13 +42,24 @@ class ListController extends ChangeNotifier {
   Future<void> open() async {
     await cache.load();
     try {
-      if (cache.folderId != null) {
-        await cloud.useFolder(cache.folderId!);
-      }
-      await _refreshFromCloud();
+      await _openSavedFolder();
       synced = true;
-    } on CloudException {
-      synced = false;
+    } on CloudException catch (error) {
+      // A folder id from the other account cannot be listed. Start fresh.
+      if (error.message != 'missing folder') {
+        synced = false;
+      } else {
+        cache.folderId = null;
+        cache.files.clear();
+        cache.lastOpenedId = null;
+        currentId = null;
+        try {
+          await _refreshFromCloud();
+          synced = true;
+        } on CloudException {
+          synced = false;
+        }
+      }
     }
     _show(cache.lastOpenedId ?? _fallbackId());
     ready = true;
@@ -248,6 +259,13 @@ class ListController extends ChangeNotifier {
     }
     await cache.save();
     notifyListeners();
+  }
+
+  Future<void> _openSavedFolder() async {
+    if (cache.folderId != null) {
+      await cloud.useFolder(cache.folderId!);
+    }
+    await _refreshFromCloud();
   }
 
   Future<void> _refreshFromCloud() async {

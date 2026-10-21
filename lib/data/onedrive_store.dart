@@ -64,6 +64,21 @@ class OneDriveStore implements CloudStore {
 
   @override
   Future<void> useFolder(String id) async {
+    final Map item;
+    try {
+      item = await _json(
+        'GET',
+        '$_root/me/drive/items/$id?select=id,name,folder',
+      );
+    } on CloudException catch (error) {
+      if (error.message == 'OneDrive 404') {
+        throw CloudException('missing folder');
+      }
+      rethrow;
+    }
+    if (_folderFromItem(item) == null) {
+      throw CloudException('missing folder');
+    }
     _folderId = id;
   }
 
