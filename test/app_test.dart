@@ -53,6 +53,16 @@ void main() {
     await settle(tester);
   }
 
+  Future<void> checkMilkFromTheOtherDevice() async {
+    final file = await groceriesFile();
+    final current = await cloud.read(file.id);
+    await cloud.write(
+      file.id,
+      current.text.replaceFirst('- [ ] milk', '- [x] milk'),
+      current.etag,
+    );
+  }
+
   Future<void> tapItemAction(
     WidgetTester tester,
     String line,
@@ -190,6 +200,7 @@ void main() {
     await settle(tester);
 
     await tester.pumpWidget(const SizedBox.shrink());
+    await settle(tester);
     await launch(tester);
     expect(find.text('Party'), findsWidgets);
     expect(find.text('Groceries'), findsNothing);
@@ -350,42 +361,91 @@ void main() {
     expect(find.text('3 gal'), findsOneWidget);
   });
 
-  testWidgets('an open list shows a check made on the other device', (
+  testWidgets('a remote check stays hidden until the app is closed', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      GroceryApp(
-        cloud: cloud,
-        cacheDirectory: cacheDir,
-        pullInterval: const Duration(seconds: 5),
-      ),
-    );
-    for (var i = 0; i < 20; i++) {
-      await tester.pump(const Duration(milliseconds: 50));
-      if (find.text('Loading').evaluate().isEmpty) break;
-    }
+    await launch(tester);
     await addItem(tester, 'milk');
-    final file = await groceriesFile();
-    final current = await cloud.read(file.id);
-    await cloud.write(
-      file.id,
-      current.text.replaceFirst('- [ ] milk', '- [x] milk'),
-      current.etag,
+    await checkMilkFromTheOtherDevice();
+    expect(itemText(tester, 'milk').style?.decoration, TextDecoration.none);
+    await tester.pump(const Duration(seconds: 5));
+    expect(itemText(tester, 'milk').style?.decoration, TextDecoration.none);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await settle(tester);
+    final saved = File(
+      '${cacheDir.path}${Platform.pathSeparator}meta.json',
+    ).readAsStringSync();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await settle(tester);
+    expect(saved, contains('- [x] milk'));
+    expect(
+      itemText(tester, 'milk').style?.decoration,
+      TextDecoration.lineThrough,
     );
-    try {
-      expect(
-        itemText(tester, 'milk').style?.decoration,
-        TextDecoration.none,
-      );
-      await tester.pump(const Duration(seconds: 5));
-      await tester.pump();
-      expect(
-        itemText(tester, 'milk').style?.decoration,
-        TextDecoration.lineThrough,
-      );
-    } finally {
-      await tester.pumpWidget(const SizedBox.shrink());
-    }
+  });
+
+  testWidgets('a remote check appears when the app is opened', (tester) async {
+    await launch(tester);
+    await addItem(tester, 'milk');
+    await tester.pumpWidget(const SizedBox.shrink());
+    await settle(tester);
+    await checkMilkFromTheOtherDevice();
+    await launch(tester);
+    expect(
+      itemText(tester, 'milk').style?.decoration,
+      TextDecoration.lineThrough,
+    );
+  });
+
+  testWidgets('a remote check appears when that list is opened', (
+    tester,
+  ) async {
+    await launch(tester);
+    await addItem(tester, 'milk');
+    await tester.tap(find.bySemanticsLabel('list-switcher'));
+    await settle(tester);
+    await tester.enterText(find.bySemanticsLabel('create-list-field'), 'Party');
+    await tester.tap(find.bySemanticsLabel('create-list'));
+    await settle(tester);
+    await checkMilkFromTheOtherDevice();
+    await tester.tap(find.bySemanticsLabel('list-switcher'));
+    await settle(tester);
+    await tester.tap(find.bySemanticsLabel('open-list:Groceries'));
+    await settle(tester);
+    expect(
+      itemText(tester, 'milk').style?.decoration,
+      TextDecoration.lineThrough,
+    );
+  });
+
+  testWidgets('a remote check is saved when that list is closed', (
+    tester,
+  ) async {
+    await launch(tester);
+    await addItem(tester, 'milk');
+    await tester.tap(find.bySemanticsLabel('list-switcher'));
+    await settle(tester);
+    await tester.enterText(find.bySemanticsLabel('create-list-field'), 'Party');
+    await tester.tap(find.bySemanticsLabel('create-list'));
+    await settle(tester);
+    await tester.tap(find.bySemanticsLabel('list-switcher'));
+    await settle(tester);
+    await tester.tap(find.bySemanticsLabel('open-list:Groceries'));
+    await settle(tester);
+    await checkMilkFromTheOtherDevice();
+    await tester.tap(find.bySemanticsLabel('list-switcher'));
+    await settle(tester);
+    await tester.tap(find.bySemanticsLabel('open-list:Party'));
+    await settle(tester);
+    expect(find.text('Party'), findsWidgets);
+    final saved = File(
+      '${cacheDir.path}${Platform.pathSeparator}meta.json',
+    ).readAsStringSync();
+    expect(saved, contains('- [x] milk'));
   });
 
   testWidgets('a local check and a bot add both survive sync', (tester) async {

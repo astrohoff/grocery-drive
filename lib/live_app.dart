@@ -79,7 +79,6 @@ class _LiveAppState extends State<LiveApp> {
       cacheDirectory: _cache!,
       accounts: _accounts,
       onAccountChanged: _reloadAccount,
-      pullInterval: const Duration(seconds: 5),
     );
   }
 }

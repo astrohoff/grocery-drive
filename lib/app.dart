@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -40,7 +39,6 @@ class GroceryApp extends StatelessWidget {
     this.accounts,
     this.onAccountChanged,
     this.onSettings,
-    this.pullInterval,
     super.key,
   });
 
@@ -49,7 +47,6 @@ class GroceryApp extends StatelessWidget {
   final CloudAccounts? accounts;
   final Future<void> Function()? onAccountChanged;
   final VoidCallback? onSettings;
-  final Duration? pullInterval;
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +61,6 @@ class GroceryApp extends StatelessWidget {
         accounts: accounts,
         onAccountChanged: onAccountChanged,
         onSettings: onSettings,
-        pullInterval: pullInterval,
       ),
     );
   }
@@ -77,7 +73,6 @@ class _ListHome extends StatefulWidget {
     this.accounts,
     this.onAccountChanged,
     this.onSettings,
-    this.pullInterval,
   });
 
   final CloudStore cloud;
@@ -85,7 +80,6 @@ class _ListHome extends StatefulWidget {
   final CloudAccounts? accounts;
   final Future<void> Function()? onAccountChanged;
   final VoidCallback? onSettings;
-  final Duration? pullInterval;
 
   @override
   State<_ListHome> createState() => _ListHomeState();
@@ -93,17 +87,15 @@ class _ListHome extends StatefulWidget {
 
 class _ListHomeState extends State<_ListHome> with WidgetsBindingObserver {
   ListController? _controller;
-  Timer? _pulls;
   Object? _error;
   String? _provider;
   var _settings = false;
+  var _away = false;
 
   @override
   void initState() {
     super.initState();
-    if (widget.pullInterval != null) {
-      WidgetsBinding.instance.addObserver(this);
-    }
+    WidgetsBinding.instance.addObserver(this);
     _load();
   }
 
@@ -131,41 +123,34 @@ class _ListHomeState extends State<_ListHome> with WidgetsBindingObserver {
         return;
       }
       setState(() => _controller = controller);
-      _startPulls();
     } catch (error) {
       if (mounted) setState(() => _error = error);
     }
   }
 
-  void _startPulls() {
-    final interval = widget.pullInterval;
-    if (interval == null || _pulls != null) return;
-    _pulls = Timer.periodic(interval, (_) => _pullIfShown());
-  }
-
-  /// A hidden app waits. Coming back reads the file once, then the timer
-  /// continues. A failed read does not change the banner.
-  void _pullIfShown() {
-    final state = WidgetsBinding.instance.lifecycleState;
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.hidden ||
-        state == AppLifecycleState.detached) {
-      return;
-    }
-    _controller?.pull();
-  }
-
+  /// Leaving or coming back syncs once. Losing focus without leaving does not.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _pullIfShown();
+    final away =
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached;
+    if (away) {
+      if (_away) return;
+      _away = true;
+      _controller?.sync();
+      return;
+    }
+    if (state == AppLifecycleState.resumed && _away) {
+      _away = false;
+      _controller?.sync();
+    }
   }
 
   @override
   void dispose() {
-    _pulls?.cancel();
-    if (widget.pullInterval != null) {
-      WidgetsBinding.instance.removeObserver(this);
-    }
+    WidgetsBinding.instance.removeObserver(this);
+    _controller?.sync();
     _controller?.dispose();
     super.dispose();
   }

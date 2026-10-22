@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 
 import 'data/cloud_store.dart';
@@ -102,10 +100,6 @@ class ListController extends ChangeNotifier {
 
   Future<void> sync() => _enqueue(_syncOnce);
 
-  /// Reads the open list and shows edits from another device.
-  /// A failed read leaves the current list and banner alone.
-  Future<void> pull() => _enqueue(_pullOnce);
-
   Future<void> _syncOnce() async {
     final current = _current;
     if (current == null) return;
@@ -120,40 +114,6 @@ class ListController extends ChangeNotifier {
     } on CloudException {
       synced = false;
     }
-    await cache.save();
-    _show(current.id);
-    _notify();
-  }
-
-  Future<void> _pullOnce() async {
-    final current = _current;
-    if (current == null || _closed) return;
-    // An unpushed edit owns the file until that upload finishes. The timer
-    // does not retry a failed upload; Sync now does.
-    if (current.localText != current.baseText) return;
-    try {
-      final remote = await cloud.read(current.id);
-      if (_closed) return;
-      if (remote.etag == current.etag) {
-        if (!synced) {
-          synced = true;
-          _notify();
-        }
-        return;
-      }
-      final shown = current.localText;
-      final wasSynced = synced;
-      final ok = await _applyRemote(current, remote);
-      if (_closed) return;
-      if (ok) synced = true;
-      if (current.localText == shown && synced == wasSynced) {
-        await cache.save();
-        return;
-      }
-    } on CloudException {
-      return;
-    }
-    if (_closed) return;
     await cache.save();
     _show(current.id);
     _notify();
@@ -214,6 +174,7 @@ class ListController extends ChangeNotifier {
   Future<void> createList(String raw) async {
     final name = raw.trim();
     if (name.isEmpty || name.contains('\n') || isReservedListName(name)) return;
+    if (_current != null) await sync();
     try {
       final created = await cloud.createMarkdown(name);
       final body = await cloud.read(created.id);
@@ -232,6 +193,7 @@ class ListController extends ChangeNotifier {
     }
     await cache.save();
     notifyListeners();
+    if (synced && currentId != null) await sync();
   }
 
   Future<void> renameList(String id, String raw) async {
@@ -258,6 +220,7 @@ class ListController extends ChangeNotifier {
   Future<void> deleteList(String id) async {
     final file = cache.files[id];
     if (file == null) return;
+    final openedAnother = currentId == id;
     try {
       await cloud.delete(id);
       cache.files.remove(id);
@@ -271,13 +234,18 @@ class ListController extends ChangeNotifier {
     }
     await cache.save();
     notifyListeners();
+    if (openedAnother && synced && currentId != null) await sync();
   }
 
-  void openList(String id) {
+  Future<void> openList(String id) async {
+    if (id == currentId || _closed) return;
+    if (_current != null) await sync();
+    if (_closed) return;
     cache.lastOpenedId = id;
     _show(id);
-    cache.save();
-    notifyListeners();
+    await cache.save();
+    _notify();
+    await sync();
   }
 
   void _commit() {
@@ -295,7 +263,6 @@ class ListController extends ChangeNotifier {
     final text = current.localText;
     try {
       final etag = await cloud.write(current.id, text, current.etag);
-      if (_closed) return;
       current.etag = etag;
       current.baseText = text;
       synced = true;
@@ -303,16 +270,13 @@ class ListController extends ChangeNotifier {
       if (_closed) return;
       synced = false;
     }
-    if (_closed) return;
     await cache.save();
     _notify();
   }
 
   Future<void> _enqueue(Future<void> Function() action) {
-    final run = _pending.then((_) {
-      if (_closed) return Future<void>.value();
-      return action();
-    });
+    if (_closed) return Future<void>.value();
+    final run = _pending.then((_) => action());
     _pending = run.then((_) {}, onError: (_, _) {});
     return run;
   }

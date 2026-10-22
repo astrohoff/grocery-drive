@@ -40,7 +40,7 @@ The window opens on the list you used last, or on Groceries the first time, with
 
 Quit the app and start it again with the same command. The window opens on the same list, including the items you added.
 
-A bot can change the open list by editing that Markdown file. The grocery folder also contains `bot-instructions.md`, which the app writes and restores, with examples of the quantity format. A list cannot be named bot-instructions. The format is in `docs/bot_format.md`. An open list picks up checks and other edits to that file within a few seconds. Press the sync button to pull a new list. A failed upload or a failed sync leaves the list on screen and a banner says Not synced.
+A bot can change the open list by editing that Markdown file. The grocery folder also contains `bot-instructions.md`, which the app writes and restores, with examples of the quantity format. A list cannot be named bot-instructions. The format is in `docs/bot_format.md`. Opening or closing the app, and opening or closing a list, syncs with the cloud. Press the sync button to sync while a list stays open. A failed upload or a failed sync leaves the list on screen and a banner says Not synced.
 
 ## Windows app
 
