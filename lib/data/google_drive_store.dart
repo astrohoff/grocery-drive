@@ -149,13 +149,15 @@ class GoogleDriveStore implements CloudStore {
         headers: {'Authorization': 'Bearer $token'},
       ),
     );
-    return CloudText(text: response.body, etag: await _version(fileId));
+    return CloudText(text: response.body, etag: await _revision(fileId));
   }
 
   @override
   Future<String> write(String fileId, String text, String? ifMatchEtag) async {
-    // Drive v3 sends no ETag and ignores If-Match. Version changes on every edit.
-    if (ifMatchEtag != null && await _version(fileId) != ifMatchEtag) {
+    // Drive v3 sends no ETag and ignores If-Match. The version number also
+    // changes when the bytes do not, so a later edit looks like a conflict.
+    // headRevisionId changes only when the content changes.
+    if (ifMatchEtag != null && await _revision(fileId) != ifMatchEtag) {
       throw CloudConflict();
     }
     final token = await accessToken();
@@ -171,7 +173,7 @@ class GoogleDriveStore implements CloudStore {
         body: text,
       ),
     );
-    return _version(fileId);
+    return _revision(fileId);
   }
 
   @override
@@ -237,21 +239,21 @@ class GoogleDriveStore implements CloudStore {
     }
   }
 
-  Future<String> _version(String fileId) async {
+  Future<String> _revision(String fileId) async {
     final token = await accessToken();
     final response = await _request(
       () => _client.get(
-        _fileUri(fileId, 'fields=version'),
+        _fileUri(fileId, 'fields=headRevisionId'),
         headers: {'Authorization': 'Bearer $token'},
       ),
     );
     final decoded = jsonDecode(response.body);
-    final raw = decoded is Map ? decoded['version'] : null;
-    final version = raw is String ? raw : (raw is num ? raw.toString() : '');
-    if (version.isEmpty) {
-      throw CloudException('Google Drive did not return a version');
+    final raw = decoded is Map ? decoded['headRevisionId'] : null;
+    final revision = raw is String ? raw : '';
+    if (revision.isEmpty) {
+      throw CloudException('Google Drive did not return a revision');
     }
-    return version;
+    return revision;
   }
 
   Uri _fileUri(String fileId, String query) {
