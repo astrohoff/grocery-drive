@@ -350,6 +350,44 @@ void main() {
     expect(find.text('3 gal'), findsOneWidget);
   });
 
+  testWidgets('an open list shows a check made on the other device', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      GroceryApp(
+        cloud: cloud,
+        cacheDirectory: cacheDir,
+        pullInterval: const Duration(seconds: 5),
+      ),
+    );
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+      if (find.text('Loading').evaluate().isEmpty) break;
+    }
+    await addItem(tester, 'milk');
+    final file = await groceriesFile();
+    final current = await cloud.read(file.id);
+    await cloud.write(
+      file.id,
+      current.text.replaceFirst('- [ ] milk', '- [x] milk'),
+      current.etag,
+    );
+    try {
+      expect(
+        itemText(tester, 'milk').style?.decoration,
+        TextDecoration.none,
+      );
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump();
+      expect(
+        itemText(tester, 'milk').style?.decoration,
+        TextDecoration.lineThrough,
+      );
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+    }
+  });
+
   testWidgets('a local check and a bot add both survive sync', (tester) async {
     await launch(tester);
     await addItem(tester, 'milk');

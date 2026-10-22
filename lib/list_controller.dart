@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import 'data/cloud_store.dart';
@@ -28,6 +30,8 @@ class ListController extends ChangeNotifier {
   final Categorizer categorizer;
   final String instructionsMarkdown;
 
+  Future<void> _pending = Future<void>.value();
+  var _closed = false;
   bool ready = false;
   bool synced = true;
   String title = '';
@@ -96,7 +100,13 @@ class ListController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> sync() async {
+  Future<void> sync() => _enqueue(_syncOnce);
+
+  /// Reads the open list and shows edits from another device.
+  /// A failed read leaves the current list and banner alone.
+  Future<void> pull() => _enqueue(_pullOnce);
+
+  Future<void> _syncOnce() async {
     final current = _current;
     if (current == null) return;
     try {
@@ -112,7 +122,41 @@ class ListController extends ChangeNotifier {
     }
     await cache.save();
     _show(current.id);
-    notifyListeners();
+    _notify();
+  }
+
+  Future<void> _pullOnce() async {
+    final current = _current;
+    if (current == null || _closed) return;
+    // An unpushed edit owns the file until that upload finishes. The timer
+    // does not retry a failed upload; Sync now does.
+    if (current.localText != current.baseText) return;
+    try {
+      final remote = await cloud.read(current.id);
+      if (_closed) return;
+      if (remote.etag == current.etag) {
+        if (!synced) {
+          synced = true;
+          _notify();
+        }
+        return;
+      }
+      final shown = current.localText;
+      final wasSynced = synced;
+      final ok = await _applyRemote(current, remote);
+      if (_closed) return;
+      if (ok) synced = true;
+      if (current.localText == shown && synced == wasSynced) {
+        await cache.save();
+        return;
+      }
+    } on CloudException {
+      return;
+    }
+    if (_closed) return;
+    await cache.save();
+    _show(current.id);
+    _notify();
   }
 
   void addItem(String raw) {
@@ -241,25 +285,47 @@ class ListController extends ChangeNotifier {
     if (current == null) return;
     current.localText = writeMarkdown(items);
     cache.save();
-    notifyListeners();
+    _notify();
     _push(current);
   }
 
-  Future<void> _push(CachedList current) async {
+  Future<void> _push(CachedList current) => _enqueue(() => _send(current));
+
+  Future<void> _send(CachedList current) async {
+    final text = current.localText;
     try {
-      final etag = await cloud.write(
-        current.id,
-        current.localText,
-        current.etag,
-      );
+      final etag = await cloud.write(current.id, text, current.etag);
+      if (_closed) return;
       current.etag = etag;
-      current.baseText = current.localText;
+      current.baseText = text;
       synced = true;
     } on CloudException {
+      if (_closed) return;
       synced = false;
     }
+    if (_closed) return;
     await cache.save();
+    _notify();
+  }
+
+  Future<void> _enqueue(Future<void> Function() action) {
+    final run = _pending.then((_) {
+      if (_closed) return Future<void>.value();
+      return action();
+    });
+    _pending = run.then((_) {}, onError: (_, _) {});
+    return run;
+  }
+
+  void _notify() {
+    if (_closed) return;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _closed = true;
+    super.dispose();
   }
 
   Future<void> _openSavedFolder() async {
@@ -328,7 +394,7 @@ class ListController extends ChangeNotifier {
     }
   }
 
-  Future<void> _applyRemote(
+  Future<bool> _applyRemote(
     CachedList current,
     CloudText remote, {
     bool retry = true,
@@ -343,22 +409,24 @@ class ListController extends ChangeNotifier {
     if (mergedText == remote.text) {
       current.baseText = remote.text;
       current.etag = remote.etag;
-      return;
+      return true;
     }
     try {
       final etag = await cloud.write(current.id, mergedText, remote.etag);
       current.etag = etag;
       current.baseText = mergedText;
       synced = true;
+      return true;
     } on CloudConflict {
       if (!retry) {
         synced = false;
-        return;
+        return false;
       }
       final again = await cloud.read(current.id);
-      await _applyRemote(current, again, retry: false);
+      return _applyRemote(current, again, retry: false);
     } on CloudException {
       synced = false;
+      return false;
     }
   }
 
