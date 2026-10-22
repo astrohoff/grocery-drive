@@ -4,6 +4,20 @@ import 'package:grocery_drive/data/onedrive_store.dart';
 import 'package:http/http.dart' as http;
 
 void main() {
+  test('useFolder treats an id from another account as a missing folder', () async {
+    final client = _QueueClient([
+      _response(400, '{"error":{"code":"invalidRequest"}}'),
+    ]);
+    final store = _store(client);
+    Object? thrown;
+    try {
+      await store.useFolder('1googleFolderId');
+    } on CloudException catch (error) {
+      thrown = error.message;
+    }
+    expect(thrown, 'missing folder');
+  });
+
   test('useFolder rejects an id onedrive does not have', () async {
     final client = _QueueClient([_response(404, '')]);
     final store = _store(client);

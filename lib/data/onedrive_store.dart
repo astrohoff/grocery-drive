@@ -71,7 +71,8 @@ class OneDriveStore implements CloudStore {
         '$_root/me/drive/items/$id?select=id,name,folder',
       );
     } on CloudException catch (error) {
-      if (error.message == 'OneDrive 404') {
+      // A folder id saved from Google is not a Graph id. Graph answers 400.
+      if (error.message == 'OneDrive 404' || error.message == 'OneDrive 400') {
         throw CloudException('missing folder');
       }
       rethrow;
