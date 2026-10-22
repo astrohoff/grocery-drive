@@ -61,7 +61,8 @@ class ListController extends ChangeNotifier {
         }
       }
     }
-    _show(cache.lastOpenedId ?? _fallbackId());
+    final savedId = cache.lastOpenedId;
+    _show(cache.files.containsKey(savedId) ? savedId : _fallbackId());
     ready = true;
     notifyListeners();
     if (synced && currentId != null) await sync();

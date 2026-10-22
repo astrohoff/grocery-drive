@@ -42,6 +42,44 @@ void main() {
     expect((await cloud.read(file.id)).text, '- [ ] milk\n');
   });
 
+  testWidgets('a saved file from the other account does not hide the cloud list', (
+    tester,
+  ) async {
+    final cloud = FakeCloudStore();
+    final folder = await cloud.createRootFolder('Groceries');
+    await cloud.useFolder(folder.id);
+    final created = await cloud.createMarkdown('Groceries');
+    final body = await cloud.read(created.id);
+    await cloud.write(created.id, '- [ ] milk\n', body.etag);
+    File('${cacheDir.path}${Platform.pathSeparator}meta.json').writeAsStringSync(
+      jsonEncode({
+        'folderId': folder.id,
+        'lastOpenedId': 'google-file',
+        'files': [
+          {
+            'id': 'google-file',
+            'name': 'Groceries.md',
+            'etag': 'google-rev',
+            'baseText': '',
+            'localText': '',
+          },
+          {
+            'id': created.id,
+            'name': 'Groceries.md',
+            'etag': 'stale',
+            'baseText': '',
+            'localText': '',
+          },
+        ],
+      }),
+    );
+
+    final controller = await _open(cacheDir, cloud);
+    addTearDown(controller.dispose);
+    expect(controller.title, 'Groceries');
+    expect(controller.items.single.name, 'milk');
+  });
+
   testWidgets('an offline open keeps the saved list', (tester) async {
     _writeCache(cacheDir, folderId: 'other-account', text: '- [ ] milk\n');
     final cloud = FakeCloudStore()..online = false;
