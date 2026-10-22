@@ -2,6 +2,13 @@ import 'item.dart';
 
 final _checkbox = RegExp(r'^\s*[-*]\s+\[([ xX])\]\s*(.*?)\s*$');
 
+bool isCheckboxLine(String line) {
+  final match = _checkbox.firstMatch(line);
+  if (match == null) return false;
+  final name = match.group(2)!.trim();
+  return name.isNotEmpty && !name.contains('\n');
+}
+
 List<Item> parseMarkdown(String text) {
   final items = <Item>[];
   final seen = <String, int>{};

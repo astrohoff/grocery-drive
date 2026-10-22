@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'data/cloud_store.dart';
 import 'data/local_cache.dart';
+import 'domain/bot_change.dart';
 import 'domain/bot_instructions.dart';
 import 'domain/categorizer.dart';
 import 'domain/item.dart';
@@ -30,6 +31,7 @@ class ListController extends ChangeNotifier {
 
   Future<void> _pending = Future<void>.value();
   var _closed = false;
+  var _botChangeBlocked = false;
   bool ready = false;
   bool synced = true;
   String title = '';
@@ -45,7 +47,7 @@ class ListController extends ChangeNotifier {
     await cache.load();
     try {
       await _openSavedFolder();
-      synced = true;
+      synced = !_botChangeBlocked;
     } on CloudException catch (error) {
       // A folder id from the other account cannot be listed. Start fresh.
       if (error.message != 'missing folder') {
@@ -57,7 +59,7 @@ class ListController extends ChangeNotifier {
         currentId = null;
         try {
           await _refreshFromCloud();
-          synced = true;
+          synced = !_botChangeBlocked;
         } on CloudException {
           synced = false;
         }
@@ -89,7 +91,7 @@ class ListController extends ChangeNotifier {
     currentId = null;
     try {
       await _refreshFromCloud();
-      synced = true;
+      synced = !_botChangeBlocked;
     } on CloudException {
       synced = false;
     }
@@ -110,7 +112,7 @@ class ListController extends ChangeNotifier {
           current.localText != current.baseText) {
         await _applyRemote(current, remote);
       }
-      synced = true;
+      synced = !_botChangeBlocked;
     } on CloudException {
       synced = false;
     }
@@ -300,6 +302,7 @@ class ListController extends ChangeNotifier {
   }
 
   Future<void> _refreshFromCloud() async {
+    _botChangeBlocked = false;
     final folderId = await cloud.ensureRootFolder();
     cache.folderId = folderId;
     var remoteFiles = await cloud.listMarkdownFiles();
@@ -310,6 +313,7 @@ class ListController extends ChangeNotifier {
     final seen = <String>{};
     for (final file in remoteFiles) {
       if (isBotInstructionsFile(file.name)) continue;
+      if (cloud.consumesBotChangeFiles && isBotChangeFile(file.name)) continue;
       seen.add(file.id);
       final existing = cache.files[file.id];
       if (existing == null) {
@@ -328,9 +332,110 @@ class ListController extends ChangeNotifier {
     cache.files.removeWhere(
       (id, file) =>
           isBotInstructionsFile(file.name) ||
+          (cloud.consumesBotChangeFiles && isBotChangeFile(file.name)) ||
           (!seen.contains(id) && id != currentId),
     );
+    if (cloud.consumesBotChangeFiles) {
+      await _applyBotChangeFiles(remoteFiles);
+    }
     await _ensureBotInstructions(remoteFiles);
+  }
+
+  Future<void> _applyBotChangeFiles(List<CloudFile> remoteFiles) async {
+    final changes =
+        remoteFiles.where((file) => isBotChangeFile(file.name)).toList()
+          ..sort((a, b) {
+            final byTime = a.modified.compareTo(b.modified);
+            if (byTime != 0) return byTime;
+            return a.name.compareTo(b.name);
+          });
+    final live = <String>{};
+    for (final change in changes) {
+      live.add(change.id);
+      await _applyBotChangeFile(change);
+    }
+    cache.appliedBotChanges.removeWhere((id, _) => !live.contains(id));
+  }
+
+  Future<void> _applyBotChangeFile(CloudFile change) async {
+    final listName = botChangeListFilename(change.name);
+    if (listName == null) {
+      _botChangeBlocked = true;
+      return;
+    }
+    final matches = [
+      for (final file in cache.files.values)
+        if (file.name.toLowerCase() == listName.toLowerCase()) file,
+    ];
+    if (matches.length != 1) {
+      _botChangeBlocked = true;
+      return;
+    }
+    final list = matches.single;
+    final CloudText changeBody;
+    try {
+      changeBody = await cloud.read(change.id);
+    } on CloudException {
+      _botChangeBlocked = true;
+      return;
+    }
+    if (cache.appliedBotChanges[change.id] == changeBody.etag) {
+      await _deleteBotChange(change.id);
+      return;
+    }
+    for (var attempt = 0; attempt < 2; attempt++) {
+      final CloudText listBody;
+      try {
+        listBody = await cloud.read(list.id);
+      } on CloudException {
+        _botChangeBlocked = true;
+        return;
+      }
+      final merged = mergedBotChange(
+        text: changeBody.text,
+        base: parseMarkdown(list.baseText),
+        local: parseMarkdown(list.localText),
+        cloud: parseMarkdown(listBody.text),
+      );
+      if (merged == null) {
+        _botChangeBlocked = true;
+        return;
+      }
+      final mergedText = writeMarkdown(merged);
+      try {
+        if (mergedText == listBody.text) {
+          list.etag = listBody.etag;
+          list.baseText = mergedText;
+          list.localText = mergedText;
+        } else {
+          final etag = await cloud.write(list.id, mergedText, listBody.etag);
+          list.etag = etag;
+          list.baseText = mergedText;
+          list.localText = mergedText;
+        }
+        cache.appliedBotChanges[change.id] = changeBody.etag;
+        await _deleteBotChange(change.id);
+        return;
+      } on CloudConflict {
+        if (attempt == 1) _botChangeBlocked = true;
+      } on CloudException {
+        _botChangeBlocked = true;
+        return;
+      }
+    }
+  }
+
+  Future<void> _deleteBotChange(String id) async {
+    try {
+      await cloud.delete(id);
+      cache.appliedBotChanges.remove(id);
+    } on CloudException catch (error) {
+      if (error.message == 'missing file') {
+        cache.appliedBotChanges.remove(id);
+        return;
+      }
+      _botChangeBlocked = true;
+    }
   }
 
   Future<void> _ensureBotInstructions(List<CloudFile> remoteFiles) async {

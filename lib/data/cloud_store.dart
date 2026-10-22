@@ -60,4 +60,9 @@ abstract class CloudStore {
   Future<CloudFolder> createRootFolder(String name);
 
   Future<void> useFolder(String id);
+
+  /// Google Drive's Grok connector creates a file and cannot edit one.
+  /// Sync then applies `{List}.bot.{token}.md` and deletes it.
+  /// OneDrive's connector edits the list file, so this stays false there.
+  bool get consumesBotChangeFiles => false;
 }

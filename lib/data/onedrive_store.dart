@@ -12,6 +12,9 @@ class OneDriveStore implements CloudStore {
   final http.Client _client;
   String? _folderId;
 
+  @override
+  bool get consumesBotChangeFiles => false;
+
   static const _root = 'https://graph.microsoft.com/v1.0';
 
   @override

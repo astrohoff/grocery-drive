@@ -41,6 +41,10 @@ class LocalCache {
   String? lastOpenedId;
   final files = <String, CachedList>{};
 
+  /// Change-file id to the etag already merged into the list.
+  /// A failed delete must not apply that file again.
+  final appliedBotChanges = <String, String>{};
+
   File get _file => File.fromUri(directory.uri.resolve('meta.json'));
 
   Future<void> load() async {
@@ -53,6 +57,13 @@ class LocalCache {
       final cached = CachedList.fromJson(raw as Map);
       files[cached.id] = cached;
     }
+    appliedBotChanges.clear();
+    final applied = json['appliedBotChanges'];
+    if (applied is Map) {
+      for (final entry in applied.entries) {
+        appliedBotChanges['${entry.key}'] = '${entry.value}';
+      }
+    }
   }
 
   Future<void> save() async {
@@ -61,6 +72,7 @@ class LocalCache {
       'folderId': folderId,
       'lastOpenedId': lastOpenedId,
       'files': [for (final file in files.values) file.toJson()],
+      'appliedBotChanges': appliedBotChanges,
     };
     // Sync IO so a widget test's fake clock can finish opening a list.
     // meta.json is a few kilobytes. The handle is closed before this returns.

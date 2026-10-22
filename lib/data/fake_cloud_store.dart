@@ -10,6 +10,13 @@ class FakeCloudStore implements CloudStore {
 
   final Directory? _directory;
   var online = true;
+
+  /// Widget tests set this for the Google Drive bot change files.
+  var applyBotChangeFiles = false;
+
+  /// This many deletes throw and leave the file in place.
+  var deleteFailures = 0;
+
   var _nextId = 1;
   var _nextEtag = 1;
   String? _activeFolderId;
@@ -124,8 +131,15 @@ class FakeCloudStore implements CloudStore {
   }
 
   @override
+  bool get consumesBotChangeFiles => applyBotChangeFiles;
+
+  @override
   Future<void> delete(String fileId) async {
     _guard();
+    if (deleteFailures > 0) {
+      deleteFailures -= 1;
+      throw CloudException('delete failed');
+    }
     if (_files.remove(fileId) == null) throw CloudException('missing file');
     _save();
   }

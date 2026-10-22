@@ -12,15 +12,25 @@ void main() {
       'instructions',
       'bot instructions',
       'Groceries',
+      'Groceries.bot.1',
+      'Shop.bot.a.md',
+      'GROCERIES.BOT.ZZ',
+      'Week.bot',
       '',
     ];
     expect(
-      [for (final name in names) if (isReservedListName(name)) name],
+      [
+        for (final name in names)
+          if (isReservedListName(name)) name,
+      ],
       [
         'bot-instructions',
         'Bot-Instructions',
         'bot-instructions.md',
         ' bot-instructions ',
+        'Groceries.bot.1',
+        'Shop.bot.a.md',
+        'GROCERIES.BOT.ZZ',
       ],
     );
   });
@@ -34,12 +44,11 @@ void main() {
       'Groceries.md',
     ];
     expect(
-      [for (final name in names) if (isBotInstructionsFile(name)) name],
       [
-        'bot-instructions.md',
-        'Bot-Instructions.md',
-        ' bot-instructions.md ',
+        for (final name in names)
+          if (isBotInstructionsFile(name)) name,
       ],
+      ['bot-instructions.md', 'Bot-Instructions.md', ' bot-instructions.md '],
     );
   });
 }

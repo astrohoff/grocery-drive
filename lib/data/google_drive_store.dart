@@ -17,6 +17,9 @@ class GoogleDriveStore implements CloudStore {
   String? _folderId;
 
   @override
+  bool get consumesBotChangeFiles => true;
+
+  @override
   Future<String> ensureRootFolder() async {
     final selected = _folderId;
     if (selected != null) return selected;
