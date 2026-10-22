@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -10,6 +11,16 @@ import 'domain/categorizer.dart';
 import 'list_controller.dart';
 import 'ui/list_screen.dart';
 import 'ui/settings_screen.dart';
+
+/// Reads the aisle dictionary.
+///
+/// [AssetBundle.loadString] decodes a file over 50 KB on an isolate. Widget
+/// tests never finish that isolate, and the list stays on Loading. [AssetBundle.load]
+/// returns the bytes on this isolate and does not cache them.
+Future<Categorizer> loadAisleCatalog(AssetBundle bundle) async {
+  final data = await bundle.load('assets/aisles.json');
+  return Categorizer.fromJsonString(utf8.decode(Uint8List.sublistView(data)));
+}
 
 const grocerySeed = Color(0xFF1F7A4D);
 const groceryPaper = Color(0xFFF6F3EC);
@@ -103,10 +114,7 @@ class _ListHomeState extends State<_ListHome> with WidgetsBindingObserver {
     try {
       // cache: false so a second widget test does not await a Future that
       // completed inside the previous test's fake-async zone.
-      final source = await rootBundle.loadString(
-        'assets/aisles.json',
-        cache: false,
-      );
+      final categorizer = await loadAisleCatalog(rootBundle);
       final instructions = await rootBundle.loadString(
         'assets/bot_instructions.md',
         cache: false,
@@ -114,7 +122,7 @@ class _ListHomeState extends State<_ListHome> with WidgetsBindingObserver {
       final controller = ListController(
         cloud: widget.cloud,
         cache: LocalCache(widget.cacheDirectory),
-        categorizer: Categorizer.fromJsonString(source),
+        categorizer: categorizer,
         instructionsMarkdown: instructions,
       );
       await controller.open();

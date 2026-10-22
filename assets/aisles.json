@@ -29,6 +29,10 @@
       "name": "Pantry"
     },
     {
+      "id": "spices",
+      "name": "Spices"
+    },
+    {
       "id": "canned",
       "name": "Canned Goods"
     },
@@ -632,7 +636,7 @@
     },
     {
       "text": "bay leaves",
-      "aisle": "produce"
+      "aisle": "spices"
     },
     {
       "text": "fresh basil",
@@ -1620,11 +1624,11 @@
     },
     {
       "text": "salt",
-      "aisle": "pantry"
+      "aisle": "spices"
     },
     {
       "text": "black pepper",
-      "aisle": "pantry"
+      "aisle": "spices"
     },
     {
       "text": "bread crumbs",
@@ -1716,35 +1720,35 @@
     },
     {
       "text": "cinnamon",
-      "aisle": "pantry"
+      "aisle": "spices"
     },
     {
       "text": "paprika",
-      "aisle": "pantry"
+      "aisle": "spices"
     },
     {
       "text": "cumin",
-      "aisle": "pantry"
+      "aisle": "spices"
     },
     {
       "text": "chili powder",
-      "aisle": "pantry"
+      "aisle": "spices"
     },
     {
       "text": "garlic powder",
-      "aisle": "pantry"
+      "aisle": "spices"
     },
     {
       "text": "onion powder",
-      "aisle": "pantry"
+      "aisle": "spices"
     },
     {
       "text": "oregano",
-      "aisle": "pantry"
+      "aisle": "spices"
     },
     {
       "text": "italian seasoning",
-      "aisle": "pantry"
+      "aisle": "spices"
     },
     {
       "text": "brown sugar",
@@ -1928,35 +1932,35 @@
     },
     {
       "text": "nutmeg",
-      "aisle": "pantry"
+      "aisle": "spices"
     },
     {
       "text": "ginger powder",
-      "aisle": "pantry"
+      "aisle": "spices"
     },
     {
       "text": "cayenne",
-      "aisle": "pantry"
+      "aisle": "spices"
     },
     {
       "text": "red pepper flakes",
-      "aisle": "pantry"
+      "aisle": "spices"
     },
     {
       "text": "bay leaf",
-      "aisle": "pantry"
+      "aisle": "spices"
     },
     {
       "text": "dried basil",
-      "aisle": "pantry"
+      "aisle": "spices"
     },
     {
       "text": "dried parsley",
-      "aisle": "pantry"
+      "aisle": "spices"
     },
     {
       "text": "dried oregano",
-      "aisle": "pantry"
+      "aisle": "spices"
     },
     {
       "text": "sesame seeds",
@@ -3013,6 +3017,362 @@
     {
       "text": "sunscreen lotion",
       "aisle": "personal"
+    },
+    {
+      "text": "pepper",
+      "aisle": "spices"
+    },
+    {
+      "text": "turmeric",
+      "aisle": "spices"
+    },
+    {
+      "text": "cloves",
+      "aisle": "spices"
+    },
+    {
+      "text": "clove",
+      "aisle": "spices"
+    },
+    {
+      "text": "allspice",
+      "aisle": "spices"
+    },
+    {
+      "text": "cardamom",
+      "aisle": "spices"
+    },
+    {
+      "text": "coriander",
+      "aisle": "spices"
+    },
+    {
+      "text": "smoked paprika",
+      "aisle": "spices"
+    },
+    {
+      "text": "garlic salt",
+      "aisle": "spices"
+    },
+    {
+      "text": "onion salt",
+      "aisle": "spices"
+    },
+    {
+      "text": "celery salt",
+      "aisle": "spices"
+    },
+    {
+      "text": "seasoned salt",
+      "aisle": "spices"
+    },
+    {
+      "text": "kosher salt",
+      "aisle": "spices"
+    },
+    {
+      "text": "sea salt",
+      "aisle": "spices"
+    },
+    {
+      "text": "himalayan salt",
+      "aisle": "spices"
+    },
+    {
+      "text": "table salt",
+      "aisle": "spices"
+    },
+    {
+      "text": "white pepper",
+      "aisle": "spices"
+    },
+    {
+      "text": "crushed red pepper",
+      "aisle": "spices"
+    },
+    {
+      "text": "chili flakes",
+      "aisle": "spices"
+    },
+    {
+      "text": "ground cinnamon",
+      "aisle": "spices"
+    },
+    {
+      "text": "ground cumin",
+      "aisle": "spices"
+    },
+    {
+      "text": "ground ginger",
+      "aisle": "spices"
+    },
+    {
+      "text": "ground nutmeg",
+      "aisle": "spices"
+    },
+    {
+      "text": "ground mustard",
+      "aisle": "spices"
+    },
+    {
+      "text": "mustard powder",
+      "aisle": "spices"
+    },
+    {
+      "text": "mustard seed",
+      "aisle": "spices"
+    },
+    {
+      "text": "curry powder",
+      "aisle": "spices"
+    },
+    {
+      "text": "pumpkin pie spice",
+      "aisle": "spices"
+    },
+    {
+      "text": "pumpkin spice",
+      "aisle": "spices"
+    },
+    {
+      "text": "garam masala",
+      "aisle": "spices"
+    },
+    {
+      "text": "five spice",
+      "aisle": "spices"
+    },
+    {
+      "text": "chinese five spice",
+      "aisle": "spices"
+    },
+    {
+      "text": "poultry seasoning",
+      "aisle": "spices"
+    },
+    {
+      "text": "taco seasoning",
+      "aisle": "spices"
+    },
+    {
+      "text": "cajun seasoning",
+      "aisle": "spices"
+    },
+    {
+      "text": "creole seasoning",
+      "aisle": "spices"
+    },
+    {
+      "text": "dried thyme",
+      "aisle": "spices"
+    },
+    {
+      "text": "dried rosemary",
+      "aisle": "spices"
+    },
+    {
+      "text": "dried sage",
+      "aisle": "spices"
+    },
+    {
+      "text": "dried dill",
+      "aisle": "spices"
+    },
+    {
+      "text": "dried mint",
+      "aisle": "spices"
+    },
+    {
+      "text": "dried tarragon",
+      "aisle": "spices"
+    },
+    {
+      "text": "dried chives",
+      "aisle": "spices"
+    },
+    {
+      "text": "fennel seed",
+      "aisle": "spices"
+    },
+    {
+      "text": "saffron",
+      "aisle": "spices"
+    },
+    {
+      "text": "star anise",
+      "aisle": "spices"
+    },
+    {
+      "text": "cayenne pepper",
+      "aisle": "spices"
+    },
+    {
+      "text": "cayenne powder",
+      "aisle": "spices"
+    },
+    {
+      "text": "italian herbs",
+      "aisle": "spices"
+    },
+    {
+      "text": "parsley flakes",
+      "aisle": "spices"
+    },
+    {
+      "text": "spice",
+      "aisle": "spices"
+    },
+    {
+      "text": "spices",
+      "aisle": "spices"
+    },
+    {
+      "text": "seasoning",
+      "aisle": "spices"
+    },
+    {
+      "text": "chili seasoning",
+      "aisle": "spices"
+    },
+    {
+      "text": "lemon pepper",
+      "aisle": "spices"
+    },
+    {
+      "text": "steak seasoning",
+      "aisle": "spices"
+    },
+    {
+      "text": "black peppercorns",
+      "aisle": "spices"
+    },
+    {
+      "text": "peppercorns",
+      "aisle": "spices"
+    },
+    {
+      "text": "chipotle powder",
+      "aisle": "spices"
+    },
+    {
+      "text": "dill weed",
+      "aisle": "spices"
+    },
+    {
+      "text": "dill seed",
+      "aisle": "spices"
+    },
+    {
+      "text": "celery seed",
+      "aisle": "spices"
+    },
+    {
+      "text": "caraway",
+      "aisle": "spices"
+    },
+    {
+      "text": "caraway seed",
+      "aisle": "spices"
+    },
+    {
+      "text": "marjoram",
+      "aisle": "spices"
+    },
+    {
+      "text": "sumac",
+      "aisle": "spices"
+    },
+    {
+      "text": "zaatar",
+      "aisle": "spices"
+    },
+    {
+      "text": "herbes de provence",
+      "aisle": "spices"
+    },
+    {
+      "text": "old bay",
+      "aisle": "spices"
+    },
+    {
+      "text": "adobo seasoning",
+      "aisle": "spices"
+    },
+    {
+      "text": "everything bagel seasoning",
+      "aisle": "spices"
+    },
+    {
+      "text": "garlic pepper",
+      "aisle": "spices"
+    },
+    {
+      "text": "onion flakes",
+      "aisle": "spices"
+    },
+    {
+      "text": "garlic flakes",
+      "aisle": "spices"
+    },
+    {
+      "text": "crushed pepper",
+      "aisle": "spices"
+    },
+    {
+      "text": "white peppercorns",
+      "aisle": "spices"
+    },
+    {
+      "text": "ground coriander",
+      "aisle": "spices"
+    },
+    {
+      "text": "cumin seeds",
+      "aisle": "spices"
+    },
+    {
+      "text": "anise seed",
+      "aisle": "spices"
+    },
+    {
+      "text": "pepper flakes",
+      "aisle": "spices"
+    },
+    {
+      "text": "cinnamon stick",
+      "aisle": "spices"
+    },
+    {
+      "text": "cinnamon sticks",
+      "aisle": "spices"
+    },
+    {
+      "text": "ground cloves",
+      "aisle": "spices"
+    },
+    {
+      "text": "whole cloves",
+      "aisle": "spices"
+    },
+    {
+      "text": "ground black pepper",
+      "aisle": "spices"
+    },
+    {
+      "text": "dr pepper",
+      "aisle": "beverages"
+    },
+    {
+      "text": "epsom salt",
+      "aisle": "personal"
+    },
+    {
+      "text": "bath salts",
+      "aisle": "personal"
+    },
+    {
+      "text": "salt pork",
+      "aisle": "meat"
     }
   ]
 }

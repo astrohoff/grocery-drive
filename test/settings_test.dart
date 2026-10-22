@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:grocery_drive/app.dart';
 import 'package:grocery_drive/data/cloud_accounts.dart';
 import 'package:grocery_drive/data/fake_cloud_store.dart';
 import 'package:grocery_drive/data/local_cache.dart';
-import 'package:grocery_drive/domain/categorizer.dart';
 import 'package:grocery_drive/list_controller.dart';
 import 'package:grocery_drive/ui/list_screen.dart';
 import 'package:grocery_drive/ui/settings_screen.dart';
@@ -40,9 +40,7 @@ void main() {
     final controller = ListController(
       cloud: cloud,
       cache: LocalCache(cacheDir),
-      categorizer: Categorizer.fromJsonString(
-        await rootBundle.loadString('assets/aisles.json', cache: false),
-      ),
+      categorizer: await loadAisleCatalog(rootBundle),
       instructionsMarkdown: await rootBundle.loadString(
         'assets/bot_instructions.md',
         cache: false,

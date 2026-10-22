@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:grocery_drive/app.dart';
 import 'package:grocery_drive/data/fake_cloud_store.dart';
 import 'package:grocery_drive/data/local_cache.dart';
-import 'package:grocery_drive/domain/categorizer.dart';
 import 'package:grocery_drive/list_controller.dart';
 
 void main() {
@@ -116,9 +116,7 @@ Future<ListController> _open(Directory directory, FakeCloudStore cloud) async {
   final controller = ListController(
     cloud: cloud,
     cache: LocalCache(directory),
-    categorizer: Categorizer.fromJsonString(
-      await rootBundle.loadString('assets/aisles.json', cache: false),
-    ),
+    categorizer: await loadAisleCatalog(rootBundle),
     instructionsMarkdown: '# instructions\n',
   );
   await controller.open();
